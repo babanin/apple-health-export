@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package health_export;
+
+option go_package = "github.com/apple-health-export/proto/health_export";
+
+service HealthExportService {
+  rpc SyncMetrics(SyncRequest) returns (SyncResponse);
+  rpc GetCheckpoint(CheckpointRequest) returns (CheckpointResponse);
+  rpc SyncStream(stream SyncRequest) returns (stream SyncResponse);
+  rpc Ping(PingRequest) returns (PingResponse);
+}
+
+message PingRequest {
+  string device_id = 1;
+}
+
+message PingResponse {
+  bool ok = 1;
+  string server_version = 2;
+}
+
+message HealthSample {
+  string metric_name = 1;
+  int64 timestamp_ms = 2;
+  double value = 3;
+  string unit = 4;
+  string source = 5;
+  map<string, string> labels = 6;
+}
+
+message SyncRequest {
+  string device_id = 1;
+  string batch_id = 2;
+  repeated HealthSample samples = 3;
+  map<string, int64> checkpoint = 4;
+  bool is_historical_export = 5;
+}
+
+message SyncResponse {
+  int32 acknowledged_count = 1;
+  map<string, int64> updated_checkpoint = 2;
+  bool success = 3;
+  string error_message = 4;
+}
+
+message CheckpointRequest {
+  string device_id = 1;
+}
+
+message CheckpointResponse {
+  map<string, int64> checkpoint = 1;
+}

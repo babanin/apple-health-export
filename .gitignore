@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local gateway data
+gateway/data/
+*.db
+*.db-shm
+*.db-wal
+
+# macOS
+.DS_Store
+
+# Xcode user state
+*.xcuserstate
+xcuserdata/
+DerivedData/
+ios-app/HealthExporter.xcodeproj/
+ios-app/HealthExporter/.swiftpm/
+
+# SwiftPM / Xcode build output
+.build/
+*.ipa
+*.dSYM/

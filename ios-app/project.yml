@@ -1,0 +1,55 @@
+name: HealthExporter
+options:
+  bundleIdPrefix: com.apple-health-export
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+packages:
+  grpc-swift-nio-transport:
+    url: https://github.com/grpc/grpc-swift-nio-transport.git
+    from: "2.0.0"
+  grpc-swift-protobuf:
+    url: https://github.com/grpc/grpc-swift-protobuf.git
+    from: "2.0.0"
+  swift-protobuf:
+    url: https://github.com/apple/swift-protobuf.git
+    from: "1.28.0"
+
+targets:
+  HealthExporter:
+    type: application
+    platform: iOS
+    sources:
+      - path: HealthExporter
+        excludes:
+          - "Package.swift"
+          - "HealthExporter-HealthKit.entitlements"
+    settings:
+      base:
+        INFOPLIST_FILE: HealthExporter/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.apple-health-export.app
+        SWIFT_VERSION: "6.0"
+        SWIFT_EMIT_LOC_STRINGS: "YES"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: HealthExporter/HealthExporter.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+    dependencies:
+      - package: grpc-swift-nio-transport
+        product: GRPCCore
+      - package: grpc-swift-nio-transport
+        product: GRPCNIOTransportHTTP2
+      - package: grpc-swift-protobuf
+        product: GRPCProtobuf
+      - package: swift-protobuf
+        product: SwiftProtobuf
+    entitlements:
+      path: HealthExporter/HealthExporter.entitlements
+      properties:
+        com.apple.developer.healthkit: true

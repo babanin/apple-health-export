@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.apple-health-export.health.sync</string>
+	</array>
+	<key>CFBundleDisplayName</key>
+	<string>Health Export</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Health Export reads your health data to sync it to your local Grafana dashboard.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Health Export does not write health data.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Health Export connects to your local gRPC gateway to sync health metrics.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>healthkit</string>
+		<string>processing</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>HEALTH_EXPORT_GRPC_HOST</key>
+	<string>192.168.1.100</string>
+	<key>HEALTH_EXPORT_GRPC_PORT</key>
+	<integer>50051</integer>
+</dict>
+</plist>

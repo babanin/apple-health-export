@@ -1,0 +1,58 @@
+services:
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:latest
+    container_name: vm
+    ports:
+      - "8428:8428"
+    volumes:
+      - vm-data:/victoria-metrics-data
+    command:
+      - "--storageDataPath=/victoria-metrics-data"
+      - "--httpListenAddr=:8428"
+      - "--retentionPeriod=10y"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8428/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    depends_on:
+      - victoriametrics
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gateway
+    ports:
+      - "50051:50051"
+    volumes:
+      - checkpoint-data:/data
+    environment:
+      - GRPC_PORT=50051
+      - VM_URL=http://victoriametrics:8428
+      - DB_PATH=/data/checkpoints.db
+    depends_on:
+      - victoriametrics
+    restart: unless-stopped
+
+volumes:
+  vm-data:
+  grafana-data:
+  checkpoint-data:
