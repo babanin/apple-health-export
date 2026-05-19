@@ -10,6 +10,9 @@ enum HealthKitError: Error {
 
 class HealthKitManager: @unchecked Sendable {
     private let healthStore = HKHealthStore()
+    private let bloodPressureCorrelationId = "HKCorrelationTypeIdentifierBloodPressure"
+    private let bloodPressureSystolicId = "HKQuantityTypeIdentifierBloodPressureSystolic"
+    private let bloodPressureDiastolicId = "HKQuantityTypeIdentifierBloodPressureDiastolic"
 
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
@@ -38,32 +41,10 @@ class HealthKitManager: @unchecked Sendable {
                 if let error = error {
                     continuation.resume(throwing: error)
                 } else {
-                    if success {
-                        self.enableBackgroundDelivery()
-                    }
                     continuation.resume(returning: success)
                 }
             }
         }
-    }
-
-    private func enableBackgroundDelivery() {
-        let types = HKMetricMapping.all.compactMap { mapping -> HKObjectType? in
-            if mapping.isCategory {
-                return HKObjectType.categoryType(forIdentifier: HKCategoryTypeIdentifier(rawValue: mapping.hkTypeId))
-            } else {
-                return HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier(rawValue: mapping.hkTypeId))
-            }
-        }
-
-        for type in types {
-            healthStore.enableBackgroundDelivery(for: type, frequency: .hourly) { success, error in
-                if let error = error {
-                    AppLogger.shared.error("Failed to enable background delivery for \(type.identifier): \(error.localizedDescription)")
-                }
-            }
-        }
-        AppLogger.shared.info("Background delivery enabled for \(types.count) HealthKit types")
     }
 
     func fetchQuantitySamples(
@@ -106,6 +87,87 @@ class HealthKitManager: @unchecked Sendable {
                         source: sample.sourceRevision.source.name,
                         labels: self.labelsFromSample(sample)
                     )
+                }
+                continuation.resume(returning: result)
+            }
+            self.healthStore.execute(query)
+        }
+    }
+
+    func fetchBloodPressureSamples(
+        for hkTypeId: String,
+        metricName: String,
+        unit: String,
+        from startDate: Date,
+        to endDate: Date = Date()
+    ) async throws -> [HealthMetricSample] {
+        do {
+            let samples = try await fetchBloodPressureCorrelationSamples(
+                for: hkTypeId,
+                metricName: metricName,
+                unit: unit,
+                from: startDate,
+                to: endDate
+            )
+            if !samples.isEmpty {
+                return samples
+            }
+            AppLogger.shared.info("\(metricName): no samples from blood pressure correlation query; trying direct quantity query")
+        } catch {
+            AppLogger.shared.debug("Blood pressure correlation query failed for \(metricName): \(error.localizedDescription)")
+        }
+
+        let quantitySamples = try await fetchQuantitySamples(
+            for: hkTypeId,
+            metricName: metricName,
+            unit: unit,
+            from: startDate,
+            to: endDate
+        )
+        AppLogger.shared.info("\(metricName): direct quantity query returned \(quantitySamples.count) samples")
+        return quantitySamples
+    }
+
+    private func fetchBloodPressureCorrelationSamples(
+        for hkTypeId: String,
+        metricName: String,
+        unit: String,
+        from startDate: Date,
+        to endDate: Date
+    ) async throws -> [HealthMetricSample] {
+        guard let correlationType = HKObjectType.correlationType(forIdentifier: HKCorrelationTypeIdentifier(rawValue: bloodPressureCorrelationId)),
+              let quantityType = HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier(rawValue: hkTypeId)) else {
+            return []
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKCorrelationQuery(type: correlationType, predicate: predicate, samplePredicates: nil) { _, correlations, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                let hkUnit = self.unitFromString(unit)
+                let fetchedCorrelations = correlations ?? []
+                AppLogger.shared.info("\(metricName): blood pressure correlation query returned \(fetchedCorrelations.count) correlations")
+                let result = fetchedCorrelations.flatMap { correlation -> [HealthMetricSample] in
+                    correlation.objects(for: quantityType).compactMap { object -> HealthMetricSample? in
+                        guard let sample = object as? HKQuantitySample else { return nil }
+                        guard sample.quantity.is(compatibleWith: hkUnit) else {
+                            AppLogger.shared.warning("Skipping \(metricName) sample: unit incompatible (\(sample.quantity))")
+                            return nil
+                        }
+                        return HealthMetricSample(
+                            metricName: metricName,
+                            timestampMs: Int64(sample.startDate.timeIntervalSince1970 * 1000),
+                            value: sample.quantity.doubleValue(for: hkUnit),
+                            unit: unit,
+                            source: sample.sourceRevision.source.name,
+                            labels: self.labelsFromSample(sample)
+                        )
+                    }
                 }
                 continuation.resume(returning: result)
             }
@@ -385,6 +447,13 @@ class HealthKitManager: @unchecked Sendable {
                     samples = try await fetchCategorySamples(
                         for: mapping.hkTypeId,
                         metricName: mapping.metricName,
+                        from: startDate
+                    )
+                } else if mapping.hkTypeId == bloodPressureSystolicId || mapping.hkTypeId == bloodPressureDiastolicId {
+                    samples = try await fetchBloodPressureSamples(
+                        for: mapping.hkTypeId,
+                        metricName: mapping.metricName,
+                        unit: mapping.unit,
                         from: startDate
                     )
                 } else {

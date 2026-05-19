@@ -28,7 +28,7 @@ struct HKMetricMapping {
         HKMetricMapping(hkTypeId: "HKQuantityTypeIdentifierAppleMoveTime", metricName: "apple_health_move_time_min", unit: "min", isCategory: false),
         HKMetricMapping(hkTypeId: "HKQuantityTypeIdentifierStepCountPerMin", metricName: "apple_health_step_count_per_min", unit: "count/min", isCategory: false),
         HKMetricMapping(hkTypeId: "HKQuantityTypeIdentifierBodyMass", metricName: "apple_health_body_mass_kg", unit: "kg", isCategory: false),
-        HKMetricMapping(hkTypeId: "HKQuantityTypeIdentifierBodyMassIndex", metricName: "apple_health_body_mass_index", unit: "kg/m²", isCategory: false),
+        HKMetricMapping(hkTypeId: "HKQuantityTypeIdentifierBodyMassIndex", metricName: "apple_health_body_mass_index", unit: "count", isCategory: false),
         HKMetricMapping(hkTypeId: "HKQuantityTypeIdentifierBodyFatPercentage", metricName: "apple_health_body_fat_percent", unit: "percent", isCategory: false),
         HKMetricMapping(hkTypeId: "HKQuantityTypeIdentifierLeanBodyMass", metricName: "apple_health_lean_body_mass_kg", unit: "kg", isCategory: false),
         HKMetricMapping(hkTypeId: "HKQuantityTypeIdentifierHeight", metricName: "apple_health_height_m", unit: "m", isCategory: false),
