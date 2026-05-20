@@ -77,6 +77,12 @@ final class SyncViewModel: ObservableObject {
         await runSync(trigger: .manual)
     }
 
+    func resyncHistory() async {
+        logger.info("Clearing local checkpoints for historical resync")
+        CheckpointManager.shared.clearAll()
+        await runSync(trigger: .manual)
+    }
+
     func runBackgroundAutoSync() async -> Bool {
         await runAutomaticSyncIfDue(trigger: .background)
     }

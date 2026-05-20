@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DASHBOARDS_DIR = ROOT / "dashboards"
 PROVISIONING_DIR = ROOT / "grafana" / "provisioning" / "dashboards"
 DS = {"type": "prometheus", "uid": "victoriametrics"}
+SLEEP_TIMESERIES_UNIT = "dtdhms"
 
 
 @dataclass(frozen=True)
@@ -796,14 +797,14 @@ def build_gallery() -> dict[str, Any]:
                 target(sleep_seconds(stage='stage="Deep"'), "B", "Deep sleep"),
                 target(sleep_seconds(stage='stage="REM"'), "C", "REM sleep"),
                 target(sleep_seconds(stage='stage="Awake"'), "D", "Awake"),
-            ], {"h": 7, "w": 12, "x": 0, "y": y}, "dtdurations", span_nulls=True))
+            ], {"h": 7, "w": 12, "x": 0, "y": y}, SLEEP_TIMESERIES_UNIT, span_nulls=True))
             pid += 1
             panels.append(timeseries(pid, "Sleep Trends - 7d Average", [
                 target(sleep_trend_seconds("7d"), "A", "Total sleep 7d"),
                 target(sleep_trend_seconds("7d", stage='stage="Deep"'), "B", "Deep sleep 7d"),
                 target(sleep_trend_seconds("7d", stage='stage="REM"'), "C", "REM sleep 7d"),
                 target(sleep_trend_seconds("7d", stage='stage="Awake"'), "D", "Awake 7d"),
-            ], {"h": 7, "w": 12, "x": 12, "y": y}, "dtdurations", span_nulls=True))
+            ], {"h": 7, "w": 12, "x": 12, "y": y}, SLEEP_TIMESERIES_UNIT, span_nulls=True))
             pid += 1
             y += 7
             panels.append(timeseries(pid, "Sleep Trends - 30d Average", [
@@ -811,7 +812,7 @@ def build_gallery() -> dict[str, Any]:
                 target(sleep_trend_seconds("30d", stage='stage="Deep"'), "B", "Deep sleep 30d"),
                 target(sleep_trend_seconds("30d", stage='stage="REM"'), "C", "REM sleep 30d"),
                 target(sleep_trend_seconds("30d", stage='stage="Awake"'), "D", "Awake 30d"),
-            ], {"h": 7, "w": 12, "x": 0, "y": y}, "dtdurations", span_nulls=True))
+            ], {"h": 7, "w": 12, "x": 0, "y": y}, SLEEP_TIMESERIES_UNIT, span_nulls=True))
             pid += 1
             domain_metrics = [m for m in domain_metrics if m.metric != "apple_health_sleep_stage"]
             start_x = 12
@@ -975,13 +976,13 @@ def build_readiness() -> dict[str, Any]:
         target(sleep_seconds(selector, stage='stage="Deep"'), "B", "Deep sleep"),
         target(sleep_seconds(selector, stage='stage="REM"'), "C", "REM sleep"),
         target(sleep_seconds(selector, stage='stage="Awake"'), "D", "Awake"),
-    ], {"h": 8, "w": 12, "x": 0, "y": y}, "dtdurations", bars=True, stacked=True))
+    ], {"h": 8, "w": 12, "x": 0, "y": y}, SLEEP_TIMESERIES_UNIT, bars=True, stacked=True))
     pid += 1
     panels.append(timeseries(pid, "Sleep Regularity Proxy", [
         target(sleep_1d, "A", "Today"),
         target(f'avg_over_time(({sleep_1d})[7d:1d])', "B", "7d avg"),
         target(f'stddev_over_time(({sleep_1d})[7d:1d])', "C", "7d variability"),
-    ], {"h": 8, "w": 12, "x": 12, "y": y}, "dtdurations", bars=True, overrides=trend_overrides(["B", "C"])))
+    ], {"h": 8, "w": 12, "x": 12, "y": y}, SLEEP_TIMESERIES_UNIT, bars=True, overrides=trend_overrides(["B", "C"])))
     pid += 1
     y += 8
     panels.append(state_panel(pid, "Sleep Stages", 'apple_health_sleep_stage{source=~"$source"}', {"h": 8, "w": 24, "x": 0, "y": y}))

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct LogPanelView: View {
     @ObservedObject var logger: AppLogger
@@ -11,6 +12,14 @@ struct LogPanelView: View {
                     .foregroundStyle(.secondary)
 
                 Spacer()
+
+                Button {
+                    UIPasteboard.general.string = logger.entries.map(\.fullText).joined(separator: "\n")
+                } label: {
+                    Label("Copy all logs", systemImage: "doc.on.doc")
+                }
+                .buttonStyle(.borderless)
+                .disabled(logger.entries.isEmpty)
 
                 Button(role: .destructive) {
                     logger.clear()

@@ -1582,7 +1582,7 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "dtdurations",
+          "unit": "dtdhms",
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
@@ -1667,7 +1667,7 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "dtdurations",
+          "unit": "dtdhms",
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
@@ -1752,7 +1752,7 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "dtdurations",
+          "unit": "dtdhms",
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",

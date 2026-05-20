@@ -14,12 +14,21 @@ struct ControlsSection: View {
             if viewModel.isSyncing {
                 ProgressView("Syncing...")
             } else {
-                Button {
-                    Task { await viewModel.startSync() }
-                } label: {
-                    Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
+                VStack(alignment: .leading, spacing: 8) {
+                    Button {
+                        Task { await viewModel.startSync() }
+                    } label: {
+                        Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button(role: .destructive) {
+                        Task { await viewModel.resyncHistory() }
+                    } label: {
+                        Label("Resync History", systemImage: "clock.arrow.circlepath")
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.borderedProminent)
             }
 
             HStack {
