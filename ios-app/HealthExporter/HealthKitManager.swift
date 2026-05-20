@@ -13,6 +13,7 @@ class HealthKitManager: @unchecked Sendable {
     private let bloodPressureCorrelationId = "HKCorrelationTypeIdentifierBloodPressure"
     private let bloodPressureSystolicId = "HKQuantityTypeIdentifierBloodPressureSystolic"
     private let bloodPressureDiastolicId = "HKQuantityTypeIdentifierBloodPressureDiastolic"
+    private let bloodPressureBackfillStartDate = Date(timeIntervalSince1970: 0)
 
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
@@ -35,6 +36,9 @@ class HealthKitManager: @unchecked Sendable {
         }
         typesToRead.insert(HKWorkoutType.workoutType())
         typesToRead.insert(HKSeriesType.workoutRoute())
+        if let bloodPressureCorrelationType = HKObjectType.correlationType(forIdentifier: HKCorrelationTypeIdentifier(rawValue: bloodPressureCorrelationId)) {
+            typesToRead.insert(bloodPressureCorrelationType)
+        }
 
         return try await withCheckedThrowingContinuation { continuation in
             healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
@@ -101,27 +105,48 @@ class HealthKitManager: @unchecked Sendable {
         from startDate: Date,
         to endDate: Date = Date()
     ) async throws -> [HealthMetricSample] {
+        let effectiveStartDate = bloodPressureBackfillStartDate
+        if startDate > effectiveStartDate {
+            AppLogger.shared.info("\(metricName): forcing full blood pressure backfill from \(isoDate(effectiveStartDate)) instead of checkpoint \(isoDate(startDate))")
+        }
+
         do {
             let samples = try await fetchBloodPressureCorrelationSamples(
                 for: hkTypeId,
                 metricName: metricName,
                 unit: unit,
-                from: startDate,
+                from: effectiveStartDate,
                 to: endDate
             )
             if !samples.isEmpty {
                 return samples
             }
-            AppLogger.shared.info("\(metricName): no samples from blood pressure correlation query; trying direct quantity query")
+            AppLogger.shared.info("\(metricName): no samples from blood pressure correlation query; trying sample query over correlations")
         } catch {
             AppLogger.shared.debug("Blood pressure correlation query failed for \(metricName): \(error.localizedDescription)")
+        }
+
+        do {
+            let samples = try await fetchBloodPressureSampleQuerySamples(
+                for: hkTypeId,
+                metricName: metricName,
+                unit: unit,
+                from: effectiveStartDate,
+                to: endDate
+            )
+            if !samples.isEmpty {
+                return samples
+            }
+            AppLogger.shared.info("\(metricName): no samples from blood pressure sample query; trying direct quantity query")
+        } catch {
+            AppLogger.shared.debug("Blood pressure sample query failed for \(metricName): \(error.localizedDescription)")
         }
 
         let quantitySamples = try await fetchQuantitySamples(
             for: hkTypeId,
             metricName: metricName,
             unit: unit,
-            from: startDate,
+            from: effectiveStartDate,
             to: endDate
         )
         AppLogger.shared.info("\(metricName): direct quantity query returned \(quantitySamples.count) samples")
@@ -152,26 +177,80 @@ class HealthKitManager: @unchecked Sendable {
                 let hkUnit = self.unitFromString(unit)
                 let fetchedCorrelations = correlations ?? []
                 AppLogger.shared.info("\(metricName): blood pressure correlation query returned \(fetchedCorrelations.count) correlations")
-                let result = fetchedCorrelations.flatMap { correlation -> [HealthMetricSample] in
-                    correlation.objects(for: quantityType).compactMap { object -> HealthMetricSample? in
-                        guard let sample = object as? HKQuantitySample else { return nil }
-                        guard sample.quantity.is(compatibleWith: hkUnit) else {
-                            AppLogger.shared.warning("Skipping \(metricName) sample: unit incompatible (\(sample.quantity))")
-                            return nil
-                        }
-                        return HealthMetricSample(
-                            metricName: metricName,
-                            timestampMs: Int64(sample.startDate.timeIntervalSince1970 * 1000),
-                            value: sample.quantity.doubleValue(for: hkUnit),
-                            unit: unit,
-                            source: sample.sourceRevision.source.name,
-                            labels: self.labelsFromSample(sample)
-                        )
-                    }
-                }
+                let result = self.bloodPressureSamples(
+                    from: fetchedCorrelations,
+                    quantityType: quantityType,
+                    metricName: metricName,
+                    unit: unit,
+                    hkUnit: hkUnit
+                )
                 continuation.resume(returning: result)
             }
             self.healthStore.execute(query)
+        }
+    }
+
+    private func fetchBloodPressureSampleQuerySamples(
+        for hkTypeId: String,
+        metricName: String,
+        unit: String,
+        from startDate: Date,
+        to endDate: Date
+    ) async throws -> [HealthMetricSample] {
+        guard let correlationType = HKObjectType.correlationType(forIdentifier: HKCorrelationTypeIdentifier(rawValue: bloodPressureCorrelationId)),
+              let quantityType = HKObjectType.quantityType(forIdentifier: HKQuantityTypeIdentifier(rawValue: hkTypeId)) else {
+            return []
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: correlationType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                let hkUnit = self.unitFromString(unit)
+                let correlations = samples as? [HKCorrelation] ?? []
+                AppLogger.shared.info("\(metricName): blood pressure sample query returned \(correlations.count) correlations")
+                let result = self.bloodPressureSamples(
+                    from: correlations,
+                    quantityType: quantityType,
+                    metricName: metricName,
+                    unit: unit,
+                    hkUnit: hkUnit
+                )
+                continuation.resume(returning: result)
+            }
+            self.healthStore.execute(query)
+        }
+    }
+
+    private func bloodPressureSamples(
+        from correlations: [HKCorrelation],
+        quantityType: HKQuantityType,
+        metricName: String,
+        unit: String,
+        hkUnit: HKUnit
+    ) -> [HealthMetricSample] {
+        correlations.flatMap { correlation -> [HealthMetricSample] in
+            correlation.objects(for: quantityType).compactMap { object -> HealthMetricSample? in
+                guard let sample = object as? HKQuantitySample else { return nil }
+                guard sample.quantity.is(compatibleWith: hkUnit) else {
+                    AppLogger.shared.warning("Skipping \(metricName) sample: unit incompatible (\(sample.quantity))")
+                    return nil
+                }
+                return HealthMetricSample(
+                    metricName: metricName,
+                    timestampMs: Int64(sample.startDate.timeIntervalSince1970 * 1000),
+                    value: sample.quantity.doubleValue(for: hkUnit),
+                    unit: unit,
+                    source: sample.sourceRevision.source.name,
+                    labels: labelsFromSample(sample)
+                )
+            }
         }
     }
 
@@ -431,12 +510,12 @@ class HealthKitManager: @unchecked Sendable {
         return result
     }
 
-    func fetchAllMetrics() async throws -> [HealthMetricSample] {
+    func fetchAllMetrics(progress: (@MainActor (HealthKitFetchProgress) -> Void)? = nil) async throws -> [HealthMetricSample] {
         var allSamples: [HealthMetricSample] = []
         let checkpointManager = CheckpointManager.shared
         AppLogger.shared.info("Fetching all metrics (\(HKMetricMapping.all.count) types)...")
 
-        let totalMetrics = HKMetricMapping.all.count
+        let totalMetrics = HKMetricMapping.all.count + 1
         for (index, mapping) in HKMetricMapping.all.enumerated() {
             let startDate = checkpointManager.getStartTime(for: mapping.metricName)
             AppLogger.shared.info("[\(index + 1)/\(totalMetrics)] Fetching \(mapping.metricName)...")
@@ -467,8 +546,20 @@ class HealthKitManager: @unchecked Sendable {
                 allSamples.append(contentsOf: samples)
                 let remaining = totalMetrics - (index + 1)
                 AppLogger.shared.info("[\(index + 1)/\(totalMetrics)] \(mapping.metricName): +\(samples.count) samples (total: \(allSamples.count), \(remaining) metrics left)")
+                await progress?(HealthKitFetchProgress(
+                    completedMetrics: index + 1,
+                    totalMetrics: totalMetrics,
+                    fetchedSamples: allSamples.count,
+                    currentMetricName: mapping.metricName
+                ))
             } catch {
                 AppLogger.shared.error("Failed to fetch \(mapping.metricName): \(error.localizedDescription)")
+                await progress?(HealthKitFetchProgress(
+                    completedMetrics: index + 1,
+                    totalMetrics: totalMetrics,
+                    fetchedSamples: allSamples.count,
+                    currentMetricName: mapping.metricName
+                ))
             }
         }
 
@@ -482,6 +573,12 @@ class HealthKitManager: @unchecked Sendable {
         } catch {
             AppLogger.shared.error("Failed to fetch workouts: \(error.localizedDescription)")
         }
+        await progress?(HealthKitFetchProgress(
+            completedMetrics: totalMetrics,
+            totalMetrics: totalMetrics,
+            fetchedSamples: allSamples.count,
+            currentMetricName: "Workouts"
+        ))
 
         return allSamples
     }

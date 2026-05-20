@@ -372,7 +372,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "count(apple_health_workout_route_latitude_degrees{source=~\"$source\",type=~\"$workout_type\",workout_id=~\"$workout_id\"})",
+          "expr": "sum(count_over_time(apple_health_workout_route_latitude_degrees{source=~\"$source\",type=~\"$workout_type\",workout_id=~\"$workout_id\"}[$__range]))",
           "refId": "A",
           "instant": true,
           "range": false
@@ -501,8 +501,8 @@
             "config": {
               "location": {
                 "mode": "coords",
-                "latitude": "latitude",
-                "longitude": "longitude"
+                "latitude": "apple_health_workout_route_latitude_degrees",
+                "longitude": "apple_health_workout_route_longitude_degrees"
               },
               "style": {
                 "color": {
@@ -524,8 +524,8 @@
             "config": {
               "location": {
                 "mode": "coords",
-                "latitude": "latitude",
-                "longitude": "longitude"
+                "latitude": "apple_health_workout_route_latitude_degrees",
+                "longitude": "apple_health_workout_route_longitude_degrees"
               },
               "style": {
                 "color": {

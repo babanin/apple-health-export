@@ -30,7 +30,7 @@ install:
 test: test-unit
 
 test-unit:
-	pytest tests/test_checkpoint_store.py tests/test_proto_contract.py -v
+	pytest tests/test_checkpoint_store.py tests/test_proto_contract.py tests/test_server_checkpoint_behavior.py -v
 
 test-integration:
 	pytest tests/test_grpc_gateway.py tests/test_vm_writer.py tests/test_end_to_end.py -v -m integration

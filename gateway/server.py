@@ -2,7 +2,10 @@ import logging
 import signal
 import sys
 import os
+import time
+from collections import Counter, defaultdict
 from concurrent import futures
+from datetime import datetime, timezone
 
 import grpc
 
@@ -12,6 +15,11 @@ from checkpoint_store import CheckpointStore
 from vm_writer import VMWriter
 
 logger = logging.getLogger(__name__)
+MAX_LOG_ITEMS = int(os.environ.get("MAX_LOG_ITEMS", "80"))
+BLOOD_PRESSURE_METRICS = (
+    "apple_health_blood_pressure_systolic_mmhg",
+    "apple_health_blood_pressure_diastolic_mmhg",
+)
 
 HK_TYPE_TO_METRIC = {
     "HKQuantityTypeIdentifierHeartRate": "apple_health_heart_rate_bpm",
@@ -136,6 +144,58 @@ QUANTITY_TYPE_IDENTIFIERS = [
 SERVER_VERSION = "0.1.0"
 
 
+def format_timestamp_ms(timestamp_ms: int) -> str:
+    return datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc).isoformat()
+
+
+def format_counts(counts: Counter[str], limit: int = MAX_LOG_ITEMS) -> str:
+    items = sorted(counts.items())
+    visible = items[:limit]
+    formatted = ", ".join(f"{name}={count}" for name, count in visible)
+    if len(items) > limit:
+        formatted += f", ... +{len(items) - limit} more"
+    return formatted or "none"
+
+
+def format_names(names, limit: int = MAX_LOG_ITEMS) -> str:
+    items = sorted(names)
+    visible = items[:limit]
+    formatted = ", ".join(visible)
+    if len(items) > limit:
+        formatted += f", ... +{len(items) - limit} more"
+    return formatted or "none"
+
+
+def format_timestamp_ranges(ranges: dict[str, list[int]], limit: int = MAX_LOG_ITEMS) -> str:
+    items = sorted(ranges.items())
+    visible = items[:limit]
+    formatted = ", ".join(
+        f"{name}={format_timestamp_ms(start)}..{format_timestamp_ms(end)}"
+        for name, (start, end) in visible
+    )
+    if len(items) > limit:
+        formatted += f", ... +{len(items) - limit} more"
+    return formatted or "none"
+
+
+def summarize_samples(samples) -> tuple[Counter[str], Counter[str], dict[str, list[int]]]:
+    metric_counts: Counter[str] = Counter()
+    source_counts: Counter[str] = Counter()
+    timestamp_ranges: dict[str, list[int]] = defaultdict(lambda: [sys.maxsize, 0])
+
+    for sample in samples:
+        metric_name = sample.metric_name or "<empty>"
+        source = sample.source or "<empty>"
+        metric_counts[metric_name] += 1
+        source_counts[source] += 1
+
+        metric_range = timestamp_ranges[metric_name]
+        metric_range[0] = min(metric_range[0], sample.timestamp_ms)
+        metric_range[1] = max(metric_range[1], sample.timestamp_ms)
+
+    return metric_counts, source_counts, dict(timestamp_ranges)
+
+
 class HealthExportServicer(health_export_pb2_grpc.HealthExportServiceServicer):
     def __init__(self, vm_writer: VMWriter, checkpoint_store: CheckpointStore):
         self.vm_writer = vm_writer
@@ -146,23 +206,61 @@ class HealthExportServicer(health_export_pb2_grpc.HealthExportServiceServicer):
         return health_export_pb2.PingResponse(ok=True, server_version=SERVER_VERSION)
 
     def SyncMetrics(self, request, context):
+        start_time = time.monotonic()
         try:
             device_id = request.device_id
             batch_id = request.batch_id
             num_samples = len(request.samples)
             num_checkpoints = len(request.checkpoint)
             is_historical = request.is_historical_export
+            peer = context.peer() if context else "unknown"
             logger.info(
-                "SyncMetrics device=%s batch=%s samples=%d checkpoints=%d historical=%s",
-                device_id, batch_id, num_samples, num_checkpoints, is_historical,
+                "SyncMetrics receive device=%s batch=%s peer=%s samples=%d checkpoints=%d historical=%s",
+                device_id, batch_id, peer, num_samples, num_checkpoints, is_historical,
             )
+
+            if is_historical:
+                logger.info(
+                    "SyncMetrics device=%s batch=%s: historical export requested; clearing server checkpoints",
+                    device_id, batch_id,
+                )
+                self.checkpoint_store.delete_device(device_id)
 
             if not request.samples and not request.checkpoint:
                 logger.info("SyncMetrics device=%s batch=%s: empty request, acknowledging", device_id, batch_id)
+                current = self.checkpoint_store.get_checkpoint(request.device_id)
                 return health_export_pb2.SyncResponse(
                     acknowledged_count=0,
+                    updated_checkpoint=current,
                     success=True,
                 )
+
+            metric_counts, source_counts, timestamp_ranges = summarize_samples(request.samples)
+            empty_metric_count = metric_counts.get("<empty>", 0)
+            if empty_metric_count:
+                logger.warning(
+                    "SyncMetrics device=%s batch=%s: received %d samples with empty metric_name",
+                    device_id, batch_id, empty_metric_count,
+                )
+            logger.info(
+                "SyncMetrics device=%s batch=%s: metric_counts unique=%d %s",
+                device_id, batch_id, len(metric_counts), format_counts(metric_counts),
+            )
+            logger.info(
+                "SyncMetrics device=%s batch=%s: source_counts unique=%d %s",
+                device_id, batch_id, len(source_counts), format_counts(source_counts),
+            )
+            logger.info(
+                "SyncMetrics device=%s batch=%s: blood_pressure_counts systolic=%d diastolic=%d",
+                device_id,
+                batch_id,
+                metric_counts.get(BLOOD_PRESSURE_METRICS[0], 0),
+                metric_counts.get(BLOOD_PRESSURE_METRICS[1], 0),
+            )
+            logger.debug(
+                "SyncMetrics device=%s batch=%s: timestamp_ranges %s",
+                device_id, batch_id, format_timestamp_ranges(timestamp_ranges),
+            )
 
             self.vm_writer.add_samples(list(request.samples))
 
@@ -175,17 +273,23 @@ class HealthExportServicer(health_export_pb2_grpc.HealthExportServiceServicer):
                 if metric not in updated or ts > updated[metric]:
                     updated[metric] = ts
 
-            for metric, ts in request.checkpoint.items():
-                if metric not in updated or ts > updated[metric]:
-                    updated[metric] = ts
-
             if updated:
+                logger.info(
+                    "SyncMetrics device=%s batch=%s: updating checkpoints metrics=%d %s",
+                    device_id, batch_id, len(updated), format_names(updated.keys()),
+                )
                 self.checkpoint_store.update_checkpoint(request.device_id, updated)
+            elif request.checkpoint:
+                logger.info(
+                    "SyncMetrics device=%s batch=%s: received %d client checkpoints but no sample-derived checkpoint updates",
+                    device_id, batch_id, len(request.checkpoint),
+                )
 
             current = self.checkpoint_store.get_checkpoint(request.device_id)
+            elapsed_ms = (time.monotonic() - start_time) * 1000
             logger.info(
-                "SyncMetrics device=%s batch=%s: acknowledged=%d checkpoint_metrics=%d",
-                device_id, batch_id, total, len(current),
+                "SyncMetrics complete device=%s batch=%s acknowledged=%d checkpoint_metrics=%d elapsed_ms=%.1f",
+                device_id, batch_id, total, len(current), elapsed_ms,
             )
 
             return health_export_pb2.SyncResponse(
@@ -243,14 +347,16 @@ def serve(
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    logger.info("Starting gRPC server on port %d", port)
+    logger.info("Starting gRPC server port=%d vm_url=%s db_path=%s", port, vm_url, db_path)
     server.start()
     server.wait_for_termination()
 
 
 if __name__ == "__main__":
+    log_level_name = os.environ.get("LOG_LEVEL", "INFO").upper()
+    log_level = getattr(logging, log_level_name, logging.INFO)
     logging.basicConfig(
-        level=logging.INFO,
+        level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     port = int(os.environ.get("GRPC_PORT", "50051"))

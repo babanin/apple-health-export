@@ -33,7 +33,11 @@ final class SyncService {
         isRunning
     }
 
-    func performSync(trigger: SyncTrigger, useDemoData: Bool) async -> SyncResult {
+    func performSync(
+        trigger: SyncTrigger,
+        useDemoData: Bool,
+        progress: @escaping @MainActor (SyncProgress) -> Void = { _ in }
+    ) async -> SyncResult {
         guard !isRunning else {
             logger.info("\(trigger.rawValue) sync skipped; another sync is already running")
             return .success(exportedCount: 0, message: "Sync already running")
@@ -42,12 +46,35 @@ final class SyncService {
         isRunning = true
         defer { isRunning = false }
 
+        let syncStartedAt = Date()
         let configuration = currentConfiguration()
         logger.info("Starting \(trigger.rawValue.lowercased()) sync using \(configuration.displayAddress)...")
+        progress(SyncProgress(
+            phase: .connecting,
+            startedAt: syncStartedAt,
+            updatedAt: Date(),
+            metricsCompleted: 0,
+            totalMetrics: 0,
+            fetchedSamples: 0,
+            exportedSamples: 0,
+            totalSamples: nil,
+            message: "Connecting to \(configuration.displayAddress)"
+        ))
 
         let client = clientFactory(configuration)
         guard await client.checkConnection() else {
             logger.error("TCP connection refused")
+            progress(SyncProgress(
+                phase: .failed,
+                startedAt: syncStartedAt,
+                updatedAt: Date(),
+                metricsCompleted: 0,
+                totalMetrics: 0,
+                fetchedSamples: 0,
+                exportedSamples: 0,
+                totalSamples: nil,
+                message: "Server unreachable at \(configuration.displayAddress)"
+            ))
             return .failure("Server unreachable at \(configuration.displayAddress)")
         }
         logger.info("TCP connection OK")
@@ -57,6 +84,17 @@ final class SyncService {
             logger.info("Connected to \(configuration.displayAddress)")
         } catch {
             logger.error("Connection failed: \(error.localizedDescription)")
+            progress(SyncProgress(
+                phase: .failed,
+                startedAt: syncStartedAt,
+                updatedAt: Date(),
+                metricsCompleted: 0,
+                totalMetrics: 0,
+                fetchedSamples: 0,
+                exportedSamples: 0,
+                totalSamples: nil,
+                message: "Connection failed: \(error.localizedDescription)"
+            ))
             return .failure("Connection failed: \(error.localizedDescription)")
         }
 
@@ -71,12 +109,34 @@ final class SyncService {
             let (ok, version) = try await client.ping(deviceId: deviceId)
             guard ok else {
                 logger.error("Gateway ping failed")
+                progress(SyncProgress(
+                    phase: .failed,
+                    startedAt: syncStartedAt,
+                    updatedAt: Date(),
+                    metricsCompleted: 0,
+                    totalMetrics: 0,
+                    fetchedSamples: 0,
+                    exportedSamples: 0,
+                    totalSamples: nil,
+                    message: "Gateway returned unhealthy"
+                ))
                 return .failure("Gateway returned unhealthy")
             }
             logger.info("Gateway responded (version: \(version))")
         } catch {
             let message = gatewayErrorMessage(for: error)
             logger.error(message)
+            progress(SyncProgress(
+                phase: .failed,
+                startedAt: syncStartedAt,
+                updatedAt: Date(),
+                metricsCompleted: 0,
+                totalMetrics: 0,
+                fetchedSamples: 0,
+                exportedSamples: 0,
+                totalSamples: nil,
+                message: message
+            ))
             return .failure(message)
         }
 
@@ -87,24 +147,83 @@ final class SyncService {
             if useDemoData {
                 logger.info("Using demo data")
                 samples = demoDataManager.generateDemoSamples()
+                progress(SyncProgress(
+                    phase: .fetching,
+                    startedAt: syncStartedAt,
+                    updatedAt: Date(),
+                    metricsCompleted: 1,
+                    totalMetrics: 1,
+                    fetchedSamples: samples.count,
+                    exportedSamples: 0,
+                    totalSamples: nil,
+                    message: "Generated demo samples"
+                ))
             } else {
                 logger.info("Fetching HealthKit data...")
-                samples = try await healthKitManagerFactory().fetchAllMetrics()
+                progress(SyncProgress(
+                    phase: .fetching,
+                    startedAt: syncStartedAt,
+                    updatedAt: Date(),
+                    metricsCompleted: 0,
+                    totalMetrics: HKMetricMapping.all.count + 1,
+                    fetchedSamples: 0,
+                    exportedSamples: 0,
+                    totalSamples: nil,
+                    message: "Fetching HealthKit data"
+                ))
+                samples = try await healthKitManagerFactory().fetchAllMetrics { fetchProgress in
+                    progress(SyncProgress(
+                        phase: .fetching,
+                        startedAt: syncStartedAt,
+                        updatedAt: Date(),
+                        metricsCompleted: fetchProgress.completedMetrics,
+                        totalMetrics: fetchProgress.totalMetrics,
+                        fetchedSamples: fetchProgress.fetchedSamples,
+                        exportedSamples: 0,
+                        totalSamples: nil,
+                        message: fetchProgress.currentMetricName.map { "Fetched \($0)" }
+                    ))
+                }
             }
             logger.info("Fetched \(samples.count) samples")
 
             guard !samples.isEmpty else {
                 logger.warning("No samples to sync")
+                progress(SyncProgress(
+                    phase: .completed,
+                    startedAt: syncStartedAt,
+                    updatedAt: Date(),
+                    metricsCompleted: useDemoData ? 1 : HKMetricMapping.all.count + 1,
+                    totalMetrics: useDemoData ? 1 : HKMetricMapping.all.count + 1,
+                    fetchedSamples: 0,
+                    exportedSamples: 0,
+                    totalSamples: 0,
+                    message: "No samples to sync"
+                ))
                 return .success(exportedCount: 0, noSamples: true, message: "No samples to sync")
             }
 
             let batchSize = 500
             var exportedCount = 0
+            let exportStartedAt = Date()
+            progress(SyncProgress(
+                phase: .exporting,
+                startedAt: exportStartedAt,
+                updatedAt: Date(),
+                metricsCompleted: useDemoData ? 1 : HKMetricMapping.all.count + 1,
+                totalMetrics: useDemoData ? 1 : HKMetricMapping.all.count + 1,
+                fetchedSamples: samples.count,
+                exportedSamples: 0,
+                totalSamples: samples.count,
+                message: "Exporting samples"
+            ))
 
             for start in stride(from: 0, to: samples.count, by: batchSize) {
                 let end = min(start + batchSize, samples.count)
                 let batch = Array(samples[start..<end])
-                logger.info("Sending batch \(start / batchSize + 1): \(batch.count) samples")
+                let batchNumber = start / batchSize + 1
+                let totalBatches = Int(ceil(Double(samples.count) / Double(batchSize)))
+                logger.info("Sending batch \(batchNumber)/\(totalBatches): \(batch.count) samples")
 
                 let response = try await client.syncMetrics(samples: batch, deviceId: deviceId)
                 guard response.success else {
@@ -114,12 +233,45 @@ final class SyncService {
 
                 exportedCount += batch.count
                 logger.info("Batch response: success=\(response.success), exported=\(exportedCount)")
+                progress(SyncProgress(
+                    phase: .exporting,
+                    startedAt: exportStartedAt,
+                    updatedAt: Date(),
+                    metricsCompleted: useDemoData ? 1 : HKMetricMapping.all.count + 1,
+                    totalMetrics: useDemoData ? 1 : HKMetricMapping.all.count + 1,
+                    fetchedSamples: samples.count,
+                    exportedSamples: exportedCount,
+                    totalSamples: samples.count,
+                    message: "Exported batch \(batchNumber) of \(totalBatches)"
+                ))
             }
 
             logger.info("\(trigger.rawValue) sync complete - \(exportedCount) samples exported")
+            progress(SyncProgress(
+                phase: .completed,
+                startedAt: syncStartedAt,
+                updatedAt: Date(),
+                metricsCompleted: useDemoData ? 1 : HKMetricMapping.all.count + 1,
+                totalMetrics: useDemoData ? 1 : HKMetricMapping.all.count + 1,
+                fetchedSamples: samples.count,
+                exportedSamples: exportedCount,
+                totalSamples: samples.count,
+                message: "\(exportedCount) samples exported"
+            ))
             return .success(exportedCount: exportedCount)
         } catch {
             logger.error("Sync failed: \(error.localizedDescription)")
+            progress(SyncProgress(
+                phase: .failed,
+                startedAt: syncStartedAt,
+                updatedAt: Date(),
+                metricsCompleted: 0,
+                totalMetrics: 0,
+                fetchedSamples: 0,
+                exportedSamples: 0,
+                totalSamples: nil,
+                message: error.localizedDescription
+            ))
             return .failure(error.localizedDescription)
         }
     }

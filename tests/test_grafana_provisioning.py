@@ -235,6 +235,33 @@ def test_exercise_time_daily_and_weekly_panels_use_bucketed_intervals():
     assert weekly_targets["B"]["interval"] == "1d"
 
 
+def test_workout_route_map_uses_prometheus_field_names():
+    data = load_dashboard("apple-health-workouts.json")
+    panels = {panel.get("title"): panel for panel in iter_panels(data)}
+
+    route_panel = panels["Outdoor Workout Route"]
+    for layer in route_panel["options"]["layers"]:
+        location = layer["config"]["location"]
+        assert location["latitude"] == "apple_health_workout_route_latitude_degrees"
+        assert location["longitude"] == "apple_health_workout_route_longitude_degrees"
+
+
+def test_workout_route_points_counts_over_dashboard_range():
+    data = load_dashboard("apple-health-workouts.json")
+    panels = {panel.get("title"): panel for panel in iter_panels(data)}
+
+    route_points_panel = panels["Route Points"]
+    expressions = [target["expr"] for target in iter_targets(route_points_panel)]
+
+    assert expressions == [
+        (
+            'sum(count_over_time(apple_health_workout_route_latitude_degrees{'
+            'source=~"$source",type=~"$workout_type",workout_id=~"$workout_id"'
+            "}[$__range]))"
+        )
+    ]
+
+
 @pytest.mark.parametrize("filename", GENERATED_DASHBOARDS)
 def test_generated_dashboards_use_template_variables(filename):
     data = load_dashboard(filename)

@@ -9,6 +9,7 @@ final class SyncViewModel: ObservableObject {
     @Published private(set) var totalSamplesExported = 0
     @Published private(set) var healthKitAuthorized = false
     @Published private(set) var pingState: PingState = .idle
+    @Published private(set) var syncProgress: SyncProgress = .idle
     @Published var useDemoData = false
     @Published var userFacingError: UserFacingError?
 
@@ -124,9 +125,12 @@ final class SyncViewModel: ObservableObject {
 
         isSyncing = true
         userFacingError = nil
+        syncProgress = .idle
         defer { isSyncing = false }
 
-        let result = await syncService.performSync(trigger: trigger, useDemoData: useDemoData)
+        let result = await syncService.performSync(trigger: trigger, useDemoData: useDemoData) { [weak self] progress in
+            self?.syncProgress = progress
+        }
         if result.succeeded {
             totalSamplesExported += result.exportedCount
             if !result.noSamples {

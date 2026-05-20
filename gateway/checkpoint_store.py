@@ -1,5 +1,8 @@
+import logging
 import sqlite3
 from typing import Dict
+
+logger = logging.getLogger(__name__)
 
 
 class CheckpointStore:
@@ -25,9 +28,15 @@ class CheckpointStore:
                 "SELECT metric_type, last_timestamp_ms FROM checkpoints WHERE device_id = ?",
                 (device_id,),
             )
-            return {row[0]: row[1] for row in cursor.fetchall()}
+            checkpoint = {row[0]: row[1] for row in cursor.fetchall()}
+            logger.debug("CheckpointStore get device=%s metrics=%d", device_id, len(checkpoint))
+            return checkpoint
 
     def update_checkpoint(self, device_id: str, checkpoint: Dict[str, int]):
+        if not checkpoint:
+            logger.info("CheckpointStore update device=%s metrics=0", device_id)
+            return
+
         with sqlite3.connect(self.db_path) as conn:
             for metric_type, timestamp_ms in checkpoint.items():
                 conn.execute(
@@ -40,6 +49,7 @@ class CheckpointStore:
                     (device_id, metric_type, timestamp_ms),
                 )
             conn.commit()
+        logger.info("CheckpointStore update device=%s metrics=%d", device_id, len(checkpoint))
 
     def get_metrics_needing_sync(self, device_id: str, available_metrics: Dict[str, int]) -> Dict[str, int]:
         current = self.get_checkpoint(device_id)

@@ -300,7 +300,11 @@ def workout_route_map(panel_id: int, pos: dict[str, int]) -> dict[str, Any]:
                     "type": "route",
                     "name": "Route",
                     "config": {
-                        "location": {"mode": "coords", "latitude": "latitude", "longitude": "longitude"},
+                        "location": {
+                            "mode": "coords",
+                            "latitude": "apple_health_workout_route_latitude_degrees",
+                            "longitude": "apple_health_workout_route_longitude_degrees",
+                        },
                         "style": {
                             "color": {"fixed": "dark-green"},
                             "opacity": 0.8,
@@ -315,7 +319,11 @@ def workout_route_map(panel_id: int, pos: dict[str, int]) -> dict[str, Any]:
                     "type": "markers",
                     "name": "Route points",
                     "config": {
-                        "location": {"mode": "coords", "latitude": "latitude", "longitude": "longitude"},
+                        "location": {
+                            "mode": "coords",
+                            "latitude": "apple_health_workout_route_latitude_degrees",
+                            "longitude": "apple_health_workout_route_longitude_degrees",
+                        },
                         "style": {
                             "color": {"fixed": "blue"},
                             "opacity": 0.45,
@@ -1042,7 +1050,7 @@ def build_workouts() -> dict[str, Any]:
         ("Average HR", latest("apple_health_workout_heart_rate_bpm", selector), "bpm", thresholds((None, "green"), (140, "yellow"), (170, "orange"), (190, "red"))),
         ("Distance", f'{latest("apple_health_workout_distance_m", selector)} / 1000', "km", None),
         ("Average Speed", f'{latest("apple_health_workout_avg_speed_m_per_sec", selector)} * 3.6', "km/h", None),
-        ("Route Points", f'count(apple_health_workout_route_latitude_degrees{{{selector}}})', "short", None),
+        ("Route Points", f'sum(count_over_time(apple_health_workout_route_latitude_degrees{{{selector}}}[$__range]))', "short", None),
     ]
     for i, (title, expr, unit, thr) in enumerate(stats):
         panels.append(stat(pid, title, expr, grid(i, 4, 4, 0), unit, thr))

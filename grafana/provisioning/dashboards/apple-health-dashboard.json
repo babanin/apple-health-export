@@ -543,7 +543,7 @@
       },
       "targets": [
         {
-          "expr": "apple_health_blood_pressure_systolic_mmhg{source=~\"$source\"}",
+          "expr": "last_over_time(apple_health_blood_pressure_systolic_mmhg{source=~\"$source\"}[$__range])",
           "refId": "A",
           "legendFormat": "Systolic",
           "datasource": {
@@ -552,7 +552,7 @@
           }
         },
         {
-          "expr": "apple_health_blood_pressure_diastolic_mmhg{source=~\"$source\"}",
+          "expr": "last_over_time(apple_health_blood_pressure_diastolic_mmhg{source=~\"$source\"}[$__range])",
           "refId": "B",
           "legendFormat": "Diastolic",
           "datasource": {
@@ -582,6 +582,9 @@
             ]
           }
         ]
+      },
+      "options": {
+        "spanNulls": true
       }
     },
     {
