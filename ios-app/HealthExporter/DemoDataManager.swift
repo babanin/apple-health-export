@@ -19,6 +19,8 @@ struct DemoDataManager {
             ("apple_health_body_mass_kg", [75.3, 75.1, 75.4, 74.9, 75.2, 75.0, 75.3, 75.1, 75.2, 75.0], "kg"),
             ("apple_health_distance_walking_running_m", [1200, 1800, 1500, 3000, 800, 600, 2200, 2800, 1400, 1900], "m"),
             ("apple_health_flights_climbed_total", [2, 3, 1, 5, 1, 0, 4, 6, 2, 3], "count"),
+            ("apple_health_blood_pressure_systolic_mmhg", [122, 118, 124, 121, 119, 123, 120, 117, 125, 121], "mmHg"),
+            ("apple_health_blood_pressure_diastolic_mmhg", [78, 76, 80, 77, 75, 79, 76, 74, 81, 77], "mmHg"),
             ("apple_health_blood_glucose_mg_dl", [95, 88, 102, 110, 85, 92, 98, 105, 90, 94], "mg/dL"),
             ("apple_health_sleep_duration_seconds", [27000, 25200, 28800, 26100, 27900, 25200, 27000, 28800, 26100, 27900], "s"),
         ]

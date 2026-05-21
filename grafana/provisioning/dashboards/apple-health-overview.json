@@ -33,8 +33,8 @@
           "type": "prometheus",
           "uid": "victoriametrics"
         },
-        "definition": "label_values(apple_health_heart_rate_bpm, source)",
-        "query": "label_values(apple_health_heart_rate_bpm, source)",
+        "definition": "label_values({__name__=~\"apple_health_.*\"}, source)",
+        "query": "label_values({__name__=~\"apple_health_.*\"}, source)",
         "label": "Source",
         "includeAll": true,
         "multi": true,
@@ -363,7 +363,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1d])) * 60",
+          "expr": "sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60",
           "refId": "A",
           "instant": true,
           "range": false
@@ -785,7 +785,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum by (stage) (count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1d])) * 60",
+          "expr": "sum_over_time((max without (source) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60",
           "refId": "A",
           "legendFormat": "{{stage}}"
         }
@@ -843,7 +843,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "100 * (sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1d])) * 60) / clamp_min((sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Awake|Asleep|Core|Deep|REM|In Bed\"}[1d])) * 60), 1)",
+          "expr": "100 * (sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60) / clamp_min((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Awake|Asleep|Core|Deep|REM|In Bed\"}[1m])))[1d:1m]) * 60), 1)",
           "refId": "A",
           "legendFormat": "Efficiency"
         }
@@ -976,7 +976,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum by (stage) (count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Core|Light|Deep|REM|Awake|Asleep\"}[30d])) * 60",
+          "expr": "sum_over_time((max without (source) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Core|Light|Deep|REM|Awake|Asleep\"}[1m])))[30d:1m]) * 60",
           "refId": "A",
           "legendFormat": "{{stage}}",
           "instant": true,

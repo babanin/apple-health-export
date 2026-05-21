@@ -1,6 +1,6 @@
 import Foundation
 
-struct ServerConfiguration: Equatable {
+struct ServerConfiguration: Equatable, Sendable {
     let host: String
     let port: Int
 

@@ -36,9 +36,6 @@ class HealthKitManager: @unchecked Sendable {
         }
         typesToRead.insert(HKWorkoutType.workoutType())
         typesToRead.insert(HKSeriesType.workoutRoute())
-        if let bloodPressureCorrelationType = HKObjectType.correlationType(forIdentifier: HKCorrelationTypeIdentifier(rawValue: bloodPressureCorrelationId)) {
-            typesToRead.insert(bloodPressureCorrelationType)
-        }
 
         return try await withCheckedThrowingContinuation { continuation in
             healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
@@ -510,6 +507,32 @@ class HealthKitManager: @unchecked Sendable {
         return result
     }
 
+    func fetchSamples(for mapping: HKMetricMapping, from startDate: Date) async throws -> [HealthMetricSample] {
+        if mapping.isCategory {
+            return try await fetchCategorySamples(
+                for: mapping.hkTypeId,
+                metricName: mapping.metricName,
+                from: startDate
+            )
+        }
+
+        if mapping.hkTypeId == bloodPressureSystolicId || mapping.hkTypeId == bloodPressureDiastolicId {
+            return try await fetchBloodPressureSamples(
+                for: mapping.hkTypeId,
+                metricName: mapping.metricName,
+                unit: mapping.unit,
+                from: startDate
+            )
+        }
+
+        return try await fetchQuantitySamples(
+            for: mapping.hkTypeId,
+            metricName: mapping.metricName,
+            unit: mapping.unit,
+            from: startDate
+        )
+    }
+
     func fetchAllMetrics(progress: (@MainActor (HealthKitFetchProgress) -> Void)? = nil) async throws -> [HealthMetricSample] {
         var allSamples: [HealthMetricSample] = []
         let checkpointManager = CheckpointManager.shared
@@ -521,28 +544,7 @@ class HealthKitManager: @unchecked Sendable {
             AppLogger.shared.info("[\(index + 1)/\(totalMetrics)] Fetching \(mapping.metricName)...")
 
             do {
-                let samples: [HealthMetricSample]
-                if mapping.isCategory {
-                    samples = try await fetchCategorySamples(
-                        for: mapping.hkTypeId,
-                        metricName: mapping.metricName,
-                        from: startDate
-                    )
-                } else if mapping.hkTypeId == bloodPressureSystolicId || mapping.hkTypeId == bloodPressureDiastolicId {
-                    samples = try await fetchBloodPressureSamples(
-                        for: mapping.hkTypeId,
-                        metricName: mapping.metricName,
-                        unit: mapping.unit,
-                        from: startDate
-                    )
-                } else {
-                    samples = try await fetchQuantitySamples(
-                        for: mapping.hkTypeId,
-                        metricName: mapping.metricName,
-                        unit: mapping.unit,
-                        from: startDate
-                    )
-                }
+                let samples = try await fetchSamples(for: mapping, from: startDate)
                 allSamples.append(contentsOf: samples)
                 let remaining = totalMetrics - (index + 1)
                 AppLogger.shared.info("[\(index + 1)/\(totalMetrics)] \(mapping.metricName): +\(samples.count) samples (total: \(allSamples.count), \(remaining) metrics left)")
@@ -709,7 +711,7 @@ class HealthKitManager: @unchecked Sendable {
     }
 }
 
-struct HealthMetricSample {
+struct HealthMetricSample: Sendable {
     let metricName: String
     let timestampMs: Int64
     let value: Double

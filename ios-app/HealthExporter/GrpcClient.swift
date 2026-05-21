@@ -18,7 +18,7 @@ final class ResumeGuard: @unchecked Sendable {
 }
 
 @available(iOS 18.0, *)
-class HealthExportClient {
+class HealthExportClient: @unchecked Sendable {
     private let serverAddress: String
     private let serverPort: Int
     private var transport: HTTP2ClientTransport.Posix?
@@ -117,14 +117,20 @@ class HealthExportClient {
         }
     }
 
-    func syncMetrics(samples: [HealthMetricSample], deviceId: String) async throws -> HealthExport_SyncResponse {
+    func syncMetrics(
+        samples: [HealthMetricSample],
+        deviceId: String,
+        checkpoint: [String: Int64]? = nil,
+        isHistoricalExport: Bool? = nil,
+        updateLocalCheckpoints: Bool = true
+    ) async throws -> HealthExport_SyncResponse {
         guard let client = self.client else {
             AppLogger.shared.error("syncMetrics called but client not connected")
             throw HealthExportClientError.notConnected
         }
 
         let checkpointManager = CheckpointManager.shared
-        let checkpointDict = checkpointManager.getAllCheckpoints()
+        let checkpointDict = checkpoint ?? checkpointManager.getAllCheckpoints()
         AppLogger.shared.debug("Syncing \(samples.count) samples with \(checkpointDict.count) checkpoints")
 
         let grpcSamples = samples.map { sample -> HealthExport_HealthSample in
@@ -143,7 +149,7 @@ class HealthExportClient {
         request.batchID = UUID().uuidString
         request.samples = grpcSamples
         request.checkpoint = checkpointDict
-        request.isHistoricalExport = checkpointDict.isEmpty
+        request.isHistoricalExport = isHistoricalExport ?? checkpointDict.isEmpty
 
         let clientRequest = ClientRequest(message: request, metadata: [:])
 
@@ -156,14 +162,17 @@ class HealthExportClient {
                 )
 
                 if response.success {
-                    var updatedCheckpoints: [String: Int64] = [:]
-                    for (key, value) in response.updatedCheckpoint {
-                        updatedCheckpoints[key] = value
+                    if updateLocalCheckpoints {
+                        var updatedCheckpoints: [String: Int64] = [:]
+                        for (key, value) in response.updatedCheckpoint {
+                            updatedCheckpoints[key] = value
+                        }
+                        checkpointManager.updateCheckpoints(updatedCheckpoints)
+                        AppLogger.shared.debug("Updated \(updatedCheckpoints.count) checkpoints from server")
                     }
-                    checkpointManager.updateCheckpoints(updatedCheckpoints)
-                    AppLogger.shared.debug("Updated \(updatedCheckpoints.count) checkpoints from server")
                 } else {
-                    AppLogger.shared.warning("Server returned unsuccessful sync response")
+                    let message = response.errorMessage.isEmpty ? "no error message" : response.errorMessage
+                    AppLogger.shared.warning("Server returned unsuccessful sync response: \(message)")
                 }
 
                 return response

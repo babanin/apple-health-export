@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DASHBOARDS_DIR = ROOT / "dashboards"
 PROVISIONING_DIR = ROOT / "grafana" / "provisioning" / "dashboards"
 DS = {"type": "prometheus", "uid": "victoriametrics"}
-SLEEP_TIMESERIES_UNIT = "dtdhms"
+SLEEP_TIMESERIES_UNIT = "h"
 
 
 @dataclass(frozen=True)
@@ -393,7 +393,7 @@ def weekly(metric: str, selector: str = 'source=~"$source"', divisor: float | No
 
 
 def daily_by_stage() -> str:
-    return 'sum by (stage) (count_over_time(apple_health_sleep_stage{source=~"$source",stage=~"Asleep|Core|Deep|REM"}[1d])) * 60'
+    return sleep_seconds(stage='stage=~"Asleep|Core|Deep|REM"', keep_stage=True)
 
 
 def daily_trend(metric: str, window: str, selector: str = 'source=~"$source"', divisor: float | None = None) -> str:
@@ -434,20 +434,35 @@ def weekly_target(
     return target(weekly(metric, selector, divisor), ref_id, legend, interval="7d")
 
 
-def sleep_seconds(selector: str = 'source=~"$source"', window: str = "1d", stage: str = 'stage=~"Asleep|Core|Deep|REM"') -> str:
-    return f"sum(count_over_time(apple_health_sleep_stage{{{selector},{stage}}}[{window}])) * 60"
+def sleep_seconds(
+    selector: str = 'source=~"$source"',
+    window: str = "1d",
+    stage: str = 'stage=~"Asleep|Core|Deep|REM"',
+    keep_stage: bool = False,
+) -> str:
+    grouping = "source" if keep_stage else "source, stage"
+    return (
+        "sum_over_time(("
+        f"max without ({grouping}) "
+        f"(present_over_time(apple_health_sleep_stage{{{selector},{stage}}}[1m]))"
+        f")[{window}:1m]) * 60"
+    )
 
 
-def sleep_hours(selector: str = 'source=~"$source"', window: str = "1d") -> str:
-    return f"({sleep_seconds(selector, window)}) / 3600"
+def sleep_hours(
+    selector: str = 'source=~"$source"',
+    window: str = "1d",
+    stage: str = 'stage=~"Asleep|Core|Deep|REM"',
+) -> str:
+    return f"({sleep_seconds(selector, window, stage)}) / 3600"
 
 
-def sleep_trend_seconds(
+def sleep_trend_hours(
     trend_window: str,
     selector: str = 'source=~"$source"',
     stage: str = 'stage=~"Asleep|Core|Deep|REM"',
 ) -> str:
-    return f"avg_over_time(({sleep_seconds(selector, stage=stage)})[{trend_window}:1d])"
+    return f"avg_over_time(({sleep_hours(selector, stage=stage)})[{trend_window}:1d])"
 
 
 def training_load_daily(selector: str = 'source=~"$source",type=~"$workout_type"') -> str:
@@ -502,8 +517,8 @@ def dashboard_base(uid: str, title: str, refresh: str = "5m", extra_variables: l
             "name": "source",
             "type": "query",
             "datasource": DS,
-            "definition": "label_values(apple_health_heart_rate_bpm, source)",
-            "query": "label_values(apple_health_heart_rate_bpm, source)",
+            "definition": 'label_values({__name__=~"apple_health_.*"}, source)',
+            "query": 'label_values({__name__=~"apple_health_.*"}, source)',
             "label": "Source",
             "includeAll": True,
             "multi": True,
@@ -594,7 +609,7 @@ def build_overview() -> dict[str, Any]:
     pid += 1
     efficiency_expr = (
         f'100 * ({sleep_seconds(selector)}) / '
-        f'clamp_min((sum(count_over_time(apple_health_sleep_stage{{{selector},{sleep_all}}}[1d])) * 60), 1)'
+        f'clamp_min(({sleep_seconds(selector, stage=sleep_all)}), 1)'
     )
     panels.append(timeseries(pid, "Sleep Efficiency", [
         target(efficiency_expr, "A", "Efficiency"),
@@ -607,7 +622,7 @@ def build_overview() -> dict[str, Any]:
 
     y += 8
     panels.append(piechart(pid, "Average Sleep Trends", [
-        target('sum by (stage) (count_over_time(apple_health_sleep_stage{source=~"$source",stage=~"Core|Light|Deep|REM|Awake|Asleep"}[30d])) * 60', "A", "{{stage}}", instant=True),
+        target(sleep_seconds(window="30d", stage='stage=~"Core|Light|Deep|REM|Awake|Asleep"', keep_stage=True), "A", "{{stage}}", instant=True),
     ], {"h": 9, "w": 12, "x": 0, "y": y}, "dtdurations"))
     pid += 1
     sleep_regularity = state_panel(pid, "Sleep Regularity", f'last_over_time(apple_health_sleep_stage{{{selector}}}[1h])', {"h": 9, "w": 12, "x": 12, "y": y}, status=True)
@@ -801,25 +816,25 @@ def build_gallery() -> dict[str, Any]:
             start_x = 12
         elif domain == "Sleep":
             panels.append(timeseries(pid, "Sleep Trends", [
-                target(sleep_seconds(), "A", "Total sleep"),
-                target(sleep_seconds(stage='stage="Deep"'), "B", "Deep sleep"),
-                target(sleep_seconds(stage='stage="REM"'), "C", "REM sleep"),
-                target(sleep_seconds(stage='stage="Awake"'), "D", "Awake"),
+                target(sleep_hours(), "A", "Total sleep"),
+                target(sleep_hours(stage='stage="Deep"'), "B", "Deep sleep"),
+                target(sleep_hours(stage='stage="REM"'), "C", "REM sleep"),
+                target(sleep_hours(stage='stage="Awake"'), "D", "Awake"),
             ], {"h": 7, "w": 12, "x": 0, "y": y}, SLEEP_TIMESERIES_UNIT, span_nulls=True))
             pid += 1
             panels.append(timeseries(pid, "Sleep Trends - 7d Average", [
-                target(sleep_trend_seconds("7d"), "A", "Total sleep 7d"),
-                target(sleep_trend_seconds("7d", stage='stage="Deep"'), "B", "Deep sleep 7d"),
-                target(sleep_trend_seconds("7d", stage='stage="REM"'), "C", "REM sleep 7d"),
-                target(sleep_trend_seconds("7d", stage='stage="Awake"'), "D", "Awake 7d"),
+                target(sleep_trend_hours("7d"), "A", "Total sleep 7d"),
+                target(sleep_trend_hours("7d", stage='stage="Deep"'), "B", "Deep sleep 7d"),
+                target(sleep_trend_hours("7d", stage='stage="REM"'), "C", "REM sleep 7d"),
+                target(sleep_trend_hours("7d", stage='stage="Awake"'), "D", "Awake 7d"),
             ], {"h": 7, "w": 12, "x": 12, "y": y}, SLEEP_TIMESERIES_UNIT, span_nulls=True))
             pid += 1
             y += 7
             panels.append(timeseries(pid, "Sleep Trends - 30d Average", [
-                target(sleep_trend_seconds("30d"), "A", "Total sleep 30d"),
-                target(sleep_trend_seconds("30d", stage='stage="Deep"'), "B", "Deep sleep 30d"),
-                target(sleep_trend_seconds("30d", stage='stage="REM"'), "C", "REM sleep 30d"),
-                target(sleep_trend_seconds("30d", stage='stage="Awake"'), "D", "Awake 30d"),
+                target(sleep_trend_hours("30d"), "A", "Total sleep 30d"),
+                target(sleep_trend_hours("30d", stage='stage="Deep"'), "B", "Deep sleep 30d"),
+                target(sleep_trend_hours("30d", stage='stage="REM"'), "C", "REM sleep 30d"),
+                target(sleep_trend_hours("30d", stage='stage="Awake"'), "D", "Awake 30d"),
             ], {"h": 7, "w": 12, "x": 0, "y": y}, SLEEP_TIMESERIES_UNIT, span_nulls=True))
             pid += 1
             domain_metrics = [m for m in domain_metrics if m.metric != "apple_health_sleep_stage"]
@@ -980,16 +995,16 @@ def build_readiness() -> dict[str, Any]:
     pid += 1
     y += 1
     panels.append(timeseries(pid, "Sleep Duration and Stage Mix", [
-        target(sleep_1d, "A", "Total sleep"),
-        target(sleep_seconds(selector, stage='stage="Deep"'), "B", "Deep sleep"),
-        target(sleep_seconds(selector, stage='stage="REM"'), "C", "REM sleep"),
-        target(sleep_seconds(selector, stage='stage="Awake"'), "D", "Awake"),
+        target(sleep_1d_hours, "A", "Total sleep"),
+        target(sleep_hours(selector, stage='stage="Deep"'), "B", "Deep sleep"),
+        target(sleep_hours(selector, stage='stage="REM"'), "C", "REM sleep"),
+        target(sleep_hours(selector, stage='stage="Awake"'), "D", "Awake"),
     ], {"h": 8, "w": 12, "x": 0, "y": y}, SLEEP_TIMESERIES_UNIT, bars=True, stacked=True))
     pid += 1
     panels.append(timeseries(pid, "Sleep Regularity Proxy", [
-        target(sleep_1d, "A", "Today"),
-        target(f'avg_over_time(({sleep_1d})[7d:1d])', "B", "7d avg"),
-        target(f'stddev_over_time(({sleep_1d})[7d:1d])', "C", "7d variability"),
+        target(sleep_1d_hours, "A", "Today"),
+        target(f'avg_over_time(({sleep_1d_hours})[7d:1d])', "B", "7d avg"),
+        target(f'stddev_over_time(({sleep_1d_hours})[7d:1d])', "C", "7d variability"),
     ], {"h": 8, "w": 12, "x": 12, "y": y}, SLEEP_TIMESERIES_UNIT, bars=True, overrides=trend_overrides(["B", "C"])))
     pid += 1
     y += 8

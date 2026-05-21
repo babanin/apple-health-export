@@ -102,6 +102,41 @@ docker compose logs -f gateway
 - Check the app log panel for rejected Health permissions or gateway errors.
 - In Grafana, widen the time range to `Last 30 days` or `Last 1 year`.
 
+**Blood pressure is empty**
+
+Hard rule: never add `HKCorrelationTypeIdentifierBloodPressure` to the HealthKit authorization read set. This has already caused the app to crash more than once with:
+
+```text
+NSInvalidArgumentException: Authorization to read the following types is disallowed: HKCorrelationTypeIdentifierBloodPressure
+```
+
+Blood pressure is exported as two Victoria Metrics series:
+
+- `apple_health_blood_pressure_systolic_mmhg`
+- `apple_health_blood_pressure_diastolic_mmhg`
+
+HealthKit stores blood pressure as systolic and diastolic quantity samples that may also appear inside a `HKCorrelationTypeIdentifierBloodPressure` correlation. The app requests read access only to the systolic and diastolic quantity types, then exports each component as its own metric. Grafana panels forward-fill the latest value over the dashboard range with `last_over_time(...[$__range])` and `spanNulls`, because blood pressure is usually sparse.
+
+Manual and in-app automatic syncs refresh HealthKit authorization before reading real data. This matters after app updates that add a new HealthKit type: iOS may have granted older metrics already, but the app still needs to ask again for the systolic and diastolic quantity permissions.
+
+Known investigation result: if blood pressure is missing while other metrics sync, do not start by changing Grafana queries again. The dashboard queries already use the expected metric names and forward-fill behavior. In the May 2026 investigation, Victoria Metrics returned no `apple_health_blood_pressure_*` series and gateway logs showed `blood_pressure_counts systolic=0 diastolic=0` for synced batches, so the failure was upstream of Grafana: the iPhone was not exporting BP samples.
+
+The iPhone app keeps only the latest 500 in-memory log entries. Full historical syncs can push early per-metric blood-pressure fetch logs out of the UI before the sync finishes, so the app also writes this end-of-sync line:
+
+```text
+Blood pressure diagnostic: fetched systolic=<count>, diastolic=<count>; <errors or no fetch errors>
+```
+
+If the panel is still empty, check whether the gateway has received BP samples:
+
+```bash
+docker compose logs gateway | rg blood_pressure_counts
+curl 'http://127.0.0.1:8428/api/v1/query?query=count_over_time(apple_health_blood_pressure_systolic_mmhg[10y])'
+curl 'http://127.0.0.1:8428/api/v1/query?query=count_over_time(apple_health_blood_pressure_diastolic_mmhg[10y])'
+```
+
+Use `count_over_time`, not instant `count(...)`, for BP diagnostics. Blood pressure is sparse; if the latest BP sample is older than the instant-query lookback window, `count(metric)` can return an empty result even when Victoria Metrics has historical BP samples. If `count_over_time(...[10y])` returns samples but Grafana is empty, widen the dashboard time range so it includes the latest BP sample and keep the `source` variable on `All` or `Health`.
+
 **HealthKit data does not appear**
 
 - Real HealthKit export requires a physical iPhone.

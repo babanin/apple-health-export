@@ -128,6 +128,13 @@ final class SyncViewModel: ObservableObject {
         syncProgress = .idle
         defer { isSyncing = false }
 
+        if trigger != .background && !useDemoData && !healthKitAuthorized {
+            await requestHealthAccess()
+            if useDemoData {
+                logger.warning("\(trigger.rawValue) sync will use demo data because HealthKit authorization is unavailable")
+            }
+        }
+
         let result = await syncService.performSync(trigger: trigger, useDemoData: useDemoData) { [weak self] progress in
             self?.syncProgress = progress
         }

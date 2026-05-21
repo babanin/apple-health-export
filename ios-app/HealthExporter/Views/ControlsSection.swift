@@ -4,9 +4,9 @@ struct ControlsSection: View {
     @ObservedObject var viewModel: SyncViewModel
 
     var body: some View {
-        Section("Sync") {
+        AppSection(title: "Sync", systemImage: "arrow.triangle.2.circlepath") {
             if viewModel.useDemoData {
-                Label("Demo Mode - tap Authorize to enable real Health data.", systemImage: "info.circle.fill")
+                Label("Demo mode is active. Authorize Health to export real data.", systemImage: "info.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
@@ -14,46 +14,60 @@ struct ControlsSection: View {
             if viewModel.isSyncing {
                 SyncProgressView(progress: viewModel.syncProgress)
             } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    Button {
-                        Task { await viewModel.startSync() }
-                    } label: {
-                        Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    .buttonStyle(.borderedProminent)
+                Button {
+                    Task { await viewModel.startSync() }
+                } label: {
+                    Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
 
+                HStack(spacing: 10) {
                     Button(role: .destructive) {
                         Task { await viewModel.resyncHistory() }
                     } label: {
                         Label("Resync History", systemImage: "clock.arrow.circlepath")
+                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(SecondaryActionButtonStyle(tint: .red))
+
+                    Button {
+                        Task { await viewModel.requestHealthAccess() }
+                    } label: {
+                        Label("Authorize", systemImage: "heart.text.square")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle(tint: .blue))
                 }
             }
 
-            HStack {
+            Divider()
+
+            HStack(spacing: 12) {
                 Button {
                     Task { await viewModel.pingGateway() }
                 } label: {
                     Label("Ping", systemImage: viewModel.pingState.systemImage)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(SecondaryActionButtonStyle(tint: viewModel.pingState.tint))
                 .disabled(viewModel.pingState.isPinging)
 
                 Spacer()
 
-                Text(viewModel.pingState.label)
-                    .font(.caption)
-                    .foregroundStyle(viewModel.pingState.foregroundStyle)
-            }
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(viewModel.pingState.tint)
+                        .frame(width: 7, height: 7)
 
-            Button("Authorize Health Access") {
-                Task { await viewModel.requestHealthAccess() }
+                    Text(viewModel.pingState.label)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(viewModel.pingState.foregroundStyle)
+                }
             }
         }
 
         if let error = viewModel.userFacingError {
-            Section {
+            AppSection(title: "Attention", systemImage: "exclamationmark.triangle.fill") {
                 Label(error.message, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundStyle(.red)
@@ -158,5 +172,48 @@ private extension PingState {
         case .idle, .pinging:
             return .secondary
         }
+    }
+
+    var tint: Color {
+        switch self {
+        case .success:
+            return .green
+        case .unreachable, .failed:
+            return .red
+        case .idle, .pinging:
+            return .blue
+        }
+    }
+}
+
+private struct PrimaryActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.blue.opacity(configuration.isPressed ? 0.78 : 1))
+            )
+    }
+}
+
+private struct SecondaryActionButtonStyle: ButtonStyle {
+    let tint: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(tint.opacity(configuration.isPressed ? 0.2 : 0.12))
+            )
     }
 }

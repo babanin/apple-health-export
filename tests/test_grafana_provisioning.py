@@ -188,6 +188,34 @@ def test_hrv_dashboards_include_smoothed_trends():
         assert hrv_30d in expressions
 
 
+@pytest.mark.parametrize(
+    "filename",
+    (
+        "apple-health-metrics-gallery.json",
+        "apple-health-clinical-deep-dive.json",
+    ),
+)
+def test_blood_pressure_panels_use_forward_filled_queries(filename):
+    data = load_dashboard(filename)
+    panels = {panel.get("title"): panel for panel in iter_panels(data)}
+    panel = panels["Blood Pressure"]
+    expressions = [target["expr"] for target in iter_targets(panel)]
+
+    assert expressions == [
+        'last_over_time(apple_health_blood_pressure_systolic_mmhg{source=~"$source"}[$__range])',
+        'last_over_time(apple_health_blood_pressure_diastolic_mmhg{source=~"$source"}[$__range])',
+    ]
+    assert panel["fieldConfig"]["defaults"]["custom"]["spanNulls"] is True
+
+
+@pytest.mark.parametrize("filename", GENERATED_DASHBOARDS)
+def test_source_variable_lists_all_apple_health_sources(filename):
+    data = load_dashboard(filename)
+    variables = {item["name"]: item for item in data["templating"]["list"]}
+
+    assert variables["source"]["query"] == 'label_values({__name__=~"apple_health_.*"}, source)'
+
+
 def test_respiratory_rate_dashboards_use_smoothed_trends():
     raw_resp = 'apple_health_respiratory_rate_per_min{source=~"$source"}'
     resp_1d = 'avg_over_time(apple_health_respiratory_rate_per_min{source=~"$source"}[1d])'
@@ -233,6 +261,60 @@ def test_exercise_time_daily_and_weekly_panels_use_bucketed_intervals():
     assert weekly_targets["A"]["interval"] == "7d"
     assert weekly_targets["B"]["legendFormat"] == "7d daily avg"
     assert weekly_targets["B"]["interval"] == "1d"
+
+
+def test_sleep_timeseries_panels_use_hours_axis():
+    expected_panels_by_file = {
+        "apple-health-metrics-gallery.json": {
+            "Sleep Trends",
+            "Sleep Trends - 7d Average",
+            "Sleep Trends - 30d Average",
+        },
+        "apple-health-readiness.json": {
+            "Sleep Duration and Stage Mix",
+            "Sleep Regularity Proxy",
+        },
+    }
+
+    for filename, expected_panels in expected_panels_by_file.items():
+        data = load_dashboard(filename)
+        panels = {
+            panel.get("title"): panel
+            for panel in iter_panels(data)
+            if panel.get("title") in expected_panels
+        }
+
+        assert set(panels) == expected_panels
+
+        for title, panel in panels.items():
+            defaults = panel["fieldConfig"]["defaults"]
+            expressions = [target["expr"] for target in iter_targets(panel)]
+
+            assert defaults["unit"] == "h", f"{filename}: {title}"
+            assert all("present_over_time" in expr for expr in expressions), (
+                f"{filename}: {title}"
+            )
+            assert all(" / 3600" in expr for expr in expressions), (
+                f"{filename}: {title}"
+            )
+
+
+@pytest.mark.parametrize("filename", EXPECTED_DASHBOARDS)
+def test_sleep_duration_queries_deduplicate_minute_buckets(filename):
+    data = load_dashboard(filename)
+    sleep_expressions = [
+        target.get("expr", "")
+        for panel in iter_panels(data)
+        for target in iter_targets(panel)
+        if "apple_health_sleep_stage" in target.get("expr", "")
+        and any(
+            function_name in target.get("expr", "")
+            for function_name in ("count_over_time", "sum_over_time")
+        )
+    ]
+
+    assert all("count_over_time" not in expr for expr in sleep_expressions)
+    assert all("present_over_time" in expr for expr in sleep_expressions)
 
 
 def test_workout_route_map_uses_prometheus_field_names():
@@ -312,7 +394,10 @@ def test_generated_dashboards_apply_chart_type_policy(filename):
                 "stat",
             }
             if panel["type"] in {"timeseries", "stat"}:
-                assert "count_over_time(" in expressions
+                assert (
+                    "count_over_time(" in expressions
+                    or "present_over_time(" in expressions
+                )
 
         if any(metric in expressions for metric in ADDITIVE_METRICS):
             if panel["type"] == "timeseries":

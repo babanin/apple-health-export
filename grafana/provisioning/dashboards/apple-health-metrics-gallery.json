@@ -33,8 +33,8 @@
           "type": "prometheus",
           "uid": "victoriametrics"
         },
-        "definition": "label_values(apple_health_heart_rate_bpm, source)",
-        "query": "label_values(apple_health_heart_rate_bpm, source)",
+        "definition": "label_values({__name__=~\"apple_health_.*\"}, source)",
+        "query": "label_values({__name__=~\"apple_health_.*\"}, source)",
         "label": "Source",
         "includeAll": true,
         "multi": true,
@@ -1548,7 +1548,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1d])) * 60",
+          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60) / 3600",
           "refId": "A",
           "legendFormat": "Total sleep"
         },
@@ -1557,7 +1557,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[1d])) * 60",
+          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[1m])))[1d:1m]) * 60) / 3600",
           "refId": "B",
           "legendFormat": "Deep sleep"
         },
@@ -1566,7 +1566,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[1d])) * 60",
+          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[1m])))[1d:1m]) * 60) / 3600",
           "refId": "C",
           "legendFormat": "REM sleep"
         },
@@ -1575,14 +1575,14 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[1d])) * 60",
+          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[1m])))[1d:1m]) * 60) / 3600",
           "refId": "D",
           "legendFormat": "Awake"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "dtdhms",
+          "unit": "h",
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
@@ -1633,7 +1633,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time((sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1d])) * 60)[7d:1d])",
+          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60) / 3600)[7d:1d])",
           "refId": "A",
           "legendFormat": "Total sleep 7d"
         },
@@ -1642,7 +1642,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time((sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[1d])) * 60)[7d:1d])",
+          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[1m])))[1d:1m]) * 60) / 3600)[7d:1d])",
           "refId": "B",
           "legendFormat": "Deep sleep 7d"
         },
@@ -1651,7 +1651,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time((sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[1d])) * 60)[7d:1d])",
+          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[1m])))[1d:1m]) * 60) / 3600)[7d:1d])",
           "refId": "C",
           "legendFormat": "REM sleep 7d"
         },
@@ -1660,14 +1660,14 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time((sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[1d])) * 60)[7d:1d])",
+          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[1m])))[1d:1m]) * 60) / 3600)[7d:1d])",
           "refId": "D",
           "legendFormat": "Awake 7d"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "dtdhms",
+          "unit": "h",
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
@@ -1718,7 +1718,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time((sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1d])) * 60)[30d:1d])",
+          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60) / 3600)[30d:1d])",
           "refId": "A",
           "legendFormat": "Total sleep 30d"
         },
@@ -1727,7 +1727,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time((sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[1d])) * 60)[30d:1d])",
+          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[1m])))[1d:1m]) * 60) / 3600)[30d:1d])",
           "refId": "B",
           "legendFormat": "Deep sleep 30d"
         },
@@ -1736,7 +1736,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time((sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[1d])) * 60)[30d:1d])",
+          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[1m])))[1d:1m]) * 60) / 3600)[30d:1d])",
           "refId": "C",
           "legendFormat": "REM sleep 30d"
         },
@@ -1745,14 +1745,14 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time((sum(count_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[1d])) * 60)[30d:1d])",
+          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[1m])))[1d:1m]) * 60) / 3600)[30d:1d])",
           "refId": "D",
           "legendFormat": "Awake 30d"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "dtdhms",
+          "unit": "h",
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",

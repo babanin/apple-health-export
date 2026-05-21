@@ -10,6 +10,7 @@ services:
       - "--storageDataPath=/victoria-metrics-data"
       - "--httpListenAddr=:8428"
       - "--retentionPeriod=10y"
+      - "--dedup.minScrapeInterval=1ms"
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost:8428/health || exit 1"]
       interval: 10s
