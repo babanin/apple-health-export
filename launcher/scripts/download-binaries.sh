@@ -29,9 +29,11 @@ download_vm() {
     echo "  Downloading Victoria Metrics $VM_VERSION ($goarch)..."
     local url="https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/v${VM_VERSION}/victoria-metrics-darwin-${goarch}-v${VM_VERSION}.tar.gz"
     curl -fsSL "$url" -o /tmp/vm-${goarch}.tar.gz
-    tar xzf /tmp/vm-${goarch}.tar.gz -C "$dir"
+    rm -rf /tmp/vm-${goarch} && mkdir /tmp/vm-${goarch}
+    tar xzf /tmp/vm-${goarch}.tar.gz -C /tmp/vm-${goarch}
+    cp /tmp/vm-${goarch}/victoria-metrics-prod "$dir/victoria-metrics"
     chmod +x "$dir/victoria-metrics"
-    rm /tmp/vm-${goarch}.tar.gz
+    rm -rf /tmp/vm-${goarch}.tar.gz /tmp/vm-${goarch}
     echo "  victoria-metrics ($dirname): $(file "$dir/victoria-metrics")"
 }
 
