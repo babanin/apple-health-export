@@ -14,6 +14,9 @@ venv/
 # macOS
 .DS_Store
 
+# IDE
+.idea/
+
 # Rust build output
 /target/
 gateway-rs/target/
