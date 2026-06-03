@@ -1,5 +1,7 @@
 # Apple Health Export
 
+![img.png](img.png)
+
 Sync Apple Health data from your iPhone to a local Grafana dashboard.
 
 The project runs a local Docker stack on your Mac:
