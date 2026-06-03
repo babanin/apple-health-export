@@ -363,7 +363,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60",
+          "expr": "sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[5m])))[1d:5m]) * 300",
           "refId": "A",
           "instant": true,
           "range": false
@@ -409,7 +409,7 @@
     },
     {
       "id": 6,
-      "title": "Active Energy",
+      "title": "Last Bedtime",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -420,6 +420,53 @@
         "w": 3,
         "x": 0,
         "y": 20
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "(min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=\"InBed\"})[1d:5m])) or min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=~\"Awake|Asleep|Core|Deep|REM\"})[1d:5m]))) * 1000",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsLocal"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "title": "Active Energy",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 0,
+        "y": 24
       },
       "targets": [
         {
@@ -472,7 +519,7 @@
       }
     },
     {
-      "id": 7,
+      "id": 8,
       "title": "Heart Rate",
       "type": "timeseries",
       "datasource": {
@@ -552,7 +599,7 @@
       "timeFrom": "24h"
     },
     {
-      "id": 8,
+      "id": 9,
       "title": "Intraday Steps",
       "type": "timeseries",
       "datasource": {
@@ -632,7 +679,7 @@
       "timeFrom": "24h"
     },
     {
-      "id": 9,
+      "id": 10,
       "title": "SpO2 Today",
       "type": "timeseries",
       "datasource": {
@@ -708,7 +755,7 @@
       "timeFrom": "24h"
     },
     {
-      "id": 10,
+      "id": 11,
       "title": "Sleep Pattern",
       "type": "state-timeline",
       "datasource": {
@@ -754,7 +801,7 @@
       "timeFrom": "24h"
     },
     {
-      "id": 11,
+      "id": 12,
       "title": "Sleep",
       "type": "row",
       "collapsed": false,
@@ -762,11 +809,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 28
       }
     },
     {
-      "id": 12,
+      "id": 13,
       "title": "Sleep",
       "type": "timeseries",
       "datasource": {
@@ -777,7 +824,7 @@
         "h": 8,
         "w": 11,
         "x": 0,
-        "y": 25
+        "y": 29
       },
       "targets": [
         {
@@ -785,7 +832,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum_over_time((max without (source) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60",
+          "expr": "sum_over_time((max without (source) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[5m])))[1d:5m]) * 300",
           "refId": "A",
           "legendFormat": "{{stage}}"
         }
@@ -824,7 +871,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 14,
       "title": "Sleep Efficiency",
       "type": "timeseries",
       "datasource": {
@@ -835,7 +882,7 @@
         "h": 8,
         "w": 7,
         "x": 11,
-        "y": 25
+        "y": 29
       },
       "targets": [
         {
@@ -843,7 +890,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "100 * (sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60) / clamp_min((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Awake|Asleep|Core|Deep|REM|In Bed\"}[1m])))[1d:1m]) * 60), 1)",
+          "expr": "100 * (sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[5m])))[1d:5m]) * 300) / clamp_min((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Awake|Asleep|Core|Deep|REM|InBed\"}[5m])))[1d:5m]) * 300), 1)",
           "refId": "A",
           "legendFormat": "Efficiency"
         }
@@ -899,7 +946,7 @@
       }
     },
     {
-      "id": 14,
+      "id": 15,
       "title": "Cardio Fitness",
       "type": "timeseries",
       "datasource": {
@@ -910,7 +957,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 25
+        "y": 29
       },
       "targets": [
         {
@@ -957,7 +1004,7 @@
       }
     },
     {
-      "id": 15,
+      "id": 16,
       "title": "Average Sleep Trends",
       "type": "piechart",
       "datasource": {
@@ -968,7 +1015,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 33
+        "y": 37
       },
       "targets": [
         {
@@ -976,7 +1023,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum_over_time((max without (source) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Core|Light|Deep|REM|Awake|Asleep\"}[1m])))[30d:1m]) * 60",
+          "expr": "sum_over_time((max without (source) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Core|Light|Deep|REM|Awake|Asleep\"}[5m])))[30d:5m]) * 300",
           "refId": "A",
           "legendFormat": "{{stage}}",
           "instant": true,
@@ -1018,7 +1065,7 @@
       }
     },
     {
-      "id": 16,
+      "id": 17,
       "title": "Sleep Regularity",
       "type": "status-history",
       "datasource": {
@@ -1029,7 +1076,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 33
+        "y": 37
       },
       "targets": [
         {
@@ -1065,7 +1112,7 @@
       "maxDataPoints": 800
     },
     {
-      "id": 17,
+      "id": 18,
       "title": "Other Long Term Data",
       "type": "row",
       "collapsed": false,
@@ -1073,11 +1120,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 46
       }
     },
     {
-      "id": 18,
+      "id": 19,
       "title": "Resting HR",
       "type": "timeseries",
       "datasource": {
@@ -1088,7 +1135,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 43
+        "y": 47
       },
       "targets": [
         {
@@ -1144,7 +1191,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 20,
       "title": "HRV",
       "type": "timeseries",
       "datasource": {
@@ -1155,7 +1202,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 43
+        "y": 47
       },
       "targets": [
         {
@@ -1220,7 +1267,7 @@
       }
     },
     {
-      "id": 20,
+      "id": 21,
       "title": "SpO2 (Avg)",
       "type": "timeseries",
       "datasource": {
@@ -1231,7 +1278,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 51
+        "y": 55
       },
       "targets": [
         {
@@ -1287,7 +1334,7 @@
       }
     },
     {
-      "id": 21,
+      "id": 22,
       "title": "Breathing Rate",
       "type": "timeseries",
       "datasource": {
@@ -1298,7 +1345,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 51
+        "y": 55
       },
       "targets": [
         {
@@ -1354,7 +1401,7 @@
       }
     },
     {
-      "id": 22,
+      "id": 23,
       "title": "Body and Recovery",
       "type": "timeseries",
       "datasource": {
@@ -1365,7 +1412,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 59
+        "y": 63
       },
       "targets": [
         {

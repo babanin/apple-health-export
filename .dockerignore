@@ -2,20 +2,10 @@
 .gitignore
 .dockerignore
 
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.ruff_cache/
-.venv/
-venv/
-
-gateway/data/
-*.db
-*.db-shm
-*.db-wal
-
 .DS_Store
 *.xcuserstate
 xcuserdata/
 DerivedData/
 .build/
+
+gateway-rs/target/

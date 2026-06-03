@@ -39,12 +39,14 @@ services:
   gateway:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.rust
     container_name: gateway
     ports:
       - "50051:50051"
     volumes:
       - checkpoint-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - GRPC_PORT=50051
       - VM_URL=http://victoriametrics:8428

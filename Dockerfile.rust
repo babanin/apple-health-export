@@ -1,0 +1,22 @@
+FROM rust:bookworm AS builder
+
+RUN apt-get update && apt-get install -y protobuf-compiler && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY gateway-rs/ gateway-rs/
+COPY proto/ proto/
+
+RUN cargo build --release --manifest-path gateway-rs/Cargo.toml
+
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /data
+
+COPY --from=builder /app/gateway-rs/target/release/apple-health-export-gateway /usr/local/bin/apple-health-export-gateway
+
+EXPOSE 50051
+
+CMD ["apple-health-export-gateway"]

@@ -2,16 +2,16 @@
 
 ## Project Overview
 
-Apple Health Export syncs 52 HealthKit metrics from iPhone to Victoria Metrics (time-series DB) via a Python gRPC gateway, visualized in Grafana.
+Apple Health Export syncs 52 HealthKit metrics from iPhone to Victoria Metrics (time-series DB) via a gRPC gateway, visualized in Grafana.
 
 ## Tech Stack
 
 - **iOS App**: Swift 6, SwiftUI, iOS 18+, HealthKit, grpc-swift (NIO transport + protobuf)
-- **Gateway**: Python 3.12, grpcio, protobuf, requests
+- **Gateway**: Rust 1.85+, tonic, prost, tokio, reqwest, rusqlite (`gateway-rs/`)
 - **Storage**: Victoria Metrics (NDJSON import API), SQLite (checkpoints), UserDefaults (client checkpoints)
 - **Visualization**: Grafana with auto-provisioned Apple Health dashboards
-- **Containerization**: Docker Compose (3 services: VM, Grafana, Gateway)
-- **Testing**: pytest (58 tests across 7 files), XcodeGen for project generation
+- **Containerization**: Docker Compose (3 services: VM, Grafana, Rust Gateway)
+- **Testing**: cargo test for Rust unit tests, XcodeGen for project generation
 
 ## Key Conventions
 
@@ -38,12 +38,15 @@ Apple Health Export syncs 52 HealthKit metrics from iPhone to Victoria Metrics (
 
 - `GrpcClient` must call `grpc.runConnections()` in a detached task after creating the `GRPCClient` — without it, RPCs silently hang until timeout. The `connect()` method stores the `GRPCClient` in `self.grpcClient` and starts `Task.detached { try await grpc.runConnections() }`. The `disconnect()` method calls `grpcClient?.beginGracefulShutdown()` and `connectionTask?.cancel()` before niling out references.
 
-### Python (Gateway)
-- All gateway code in `gateway/`
-- gRPC stubs (`health_export_pb2.py`, `health_export_pb2_grpc.py`) are auto-generated — edit `proto/health_export.proto` then `make proto`
-- VMWriter uses NDJSON format with periodic (1s) and threshold (5000 samples) flush
-- CheckpointStore uses SQLite with UPSERT + MAX for monotonic timestamps
-- Server runs 10 worker threads, 100MB max message size
+### Rust (Gateway)
+- All code in `gateway-rs/` — `src/main.rs`, `src/server.rs`, `src/vm_writer.rs`, `src/checkpoint.rs`
+- `build.rs` uses `tonic-build` for proto compilation at build time
+- Uses `cargo fmt` (max_width=100) and `cargo clippy -- -D warnings`
+- Lint: `make lint-rs`, test: `make test-rs`, build: `make build-rs`
+
+### Python (Grafana & Dashboards)
+
+- `scripts/generate_dashboards.py` generates curated dashboard JSON — run `make dashboards`
 
 ### Protobuf
 - Package: `health_export`
@@ -69,19 +72,25 @@ make docker-logs        # follow gateway logs
 make dashboards         # regenerate curated dashboard JSON + provisioning copies
 
 # gRPC stubs
-make proto              # Python stubs from proto/
 make proto-swift        # Swift stubs from proto/
 
 # iOS app
 cd ios-app && ./setup.sh   # install XcodeGen, generate .xcodeproj
 # Then open in Xcode, select team, build
 
+# Rust gateway
+make build-rs               # cargo build --release (gateway-rs/)
+make test-rs                # cargo test --lib
+make lint-rs                # cargo fmt --check + cargo clippy
+
 # Tests
 make test-unit              # checkpoint_store + proto_contract (no Docker)
 make test-integration       # gateway + vm_writer + e2e (needs Docker for VM)
 RUN_DOCKER_TESTS=1 make test-docker  # full stack validation
 make test-all               # everything
+make test-rs                # Rust unit tests (gateway-rs)
 make lint                   # ruff + flake8
+make lint-rs                # cargo fmt --check + cargo clippy
 ```
 
 ## Architecture: Data Flow
@@ -91,7 +100,7 @@ iPhone HealthKit
   → HealthKitManager.fetchAllMetrics() [52 types, checkpoint-aware start dates]
   → SyncManager.startSync() [batches of 500]
   → GrpcClient.syncMetrics() [HTTP/2 plaintext, configurable host:port]
-  → HealthExportServicer.SyncMetrics() [Python gRPC server, port 50051]
+  → HealthExportService.SyncMetrics() [Rust gRPC server via tonic, port 50051]
   → VMWriter.buffer() + periodic flush [NDJSON to /api/v1/import]
   → Victoria Metrics [10yr retention, port 8428]
   → Grafana [port 3000, PromQL queries]
@@ -112,9 +121,9 @@ iPhone HealthKit
 | Add a new HealthKit metric | `ios-app/HealthExporter/Models/HKMetricMapping.swift` — add entry to `all` array |
 | Change gRPC service contract | `proto/health_export.proto` — then `make proto && make proto-swift` |
 | Modify sync batching | `ios-app/HealthExporter/App.swift` — `SyncManager.startSync()` batch size |
-| Change VMWriter flush behavior | `gateway/vm_writer.py` — flush interval, threshold, retry config |
-| Change checkpoint storage | `gateway/checkpoint_store.py` (server) or `ios-app/HealthExporter/CheckpointManager.swift` (client) |
-| Add gRPC server logic | `gateway/server.py` — `HealthExportServicer` class |
+| Change VMWriter flush behavior | `gateway-rs/src/vm_writer.rs` — flush interval, threshold, retry config |
+| Change checkpoint storage | `gateway-rs/src/checkpoint.rs` (server) or `ios-app/HealthExporter/CheckpointManager.swift` (client) |
+| Add gRPC server logic | `gateway-rs/src/server.rs` |
 | Change iOS UI | `ios-app/HealthExporter/App.swift` — `ContentView`, `LogPanelView` |
 | Change logging | `ios-app/HealthExporter/AppLogger.swift` — `AppLogger.shared.info/warning/error/debug()` |
 | Change server host/port | In-app Settings UI (persists to UserDefaults) or `ios-app/HealthExporter/Info.plist` defaults |
@@ -128,6 +137,7 @@ iPhone HealthKit
 | `GRPC_PORT` | `50051` | Gateway server port |
 | `VM_URL` | `http://victoriametrics:8428` | Victoria Metrics import endpoint |
 | `DB_PATH` | `/data/checkpoints.db` | SQLite checkpoint database path |
+| `RUST_LOG` | `info` | Rust gateway log level (debug, info, warn, error) |
 | `RUN_DOCKER_TESTS` | (unset) | Gate for Docker stack tests |
 
 ## iOS App: In-App Config

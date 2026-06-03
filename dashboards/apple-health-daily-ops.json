@@ -291,7 +291,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60",
+          "expr": "sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[5m])))[1d:5m]) * 300",
           "refId": "A",
           "instant": true,
           "range": false
@@ -549,7 +549,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum_over_time((max without (source) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60",
+          "expr": "sum_over_time((max without (source) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[5m])))[1d:5m]) * 300",
           "refId": "A",
           "legendFormat": "{{stage}}"
         }

@@ -1548,7 +1548,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60) / 3600",
+          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[5m])))[1d:5m]) * 300) / 3600",
           "refId": "A",
           "legendFormat": "Total sleep"
         },
@@ -1557,7 +1557,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[1m])))[1d:1m]) * 60) / 3600",
+          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[5m])))[1d:5m]) * 300) / 3600",
           "refId": "B",
           "legendFormat": "Deep sleep"
         },
@@ -1566,7 +1566,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[1m])))[1d:1m]) * 60) / 3600",
+          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[5m])))[1d:5m]) * 300) / 3600",
           "refId": "C",
           "legendFormat": "REM sleep"
         },
@@ -1575,7 +1575,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[1m])))[1d:1m]) * 60) / 3600",
+          "expr": "(sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[5m])))[1d:5m]) * 300) / 3600",
           "refId": "D",
           "legendFormat": "Awake"
         }
@@ -1633,7 +1633,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60) / 3600)[7d:1d])",
+          "expr": "avg_over_time((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[5m])))[1d:5m]) * 300)[7d:1d])",
           "refId": "A",
           "legendFormat": "Total sleep 7d"
         },
@@ -1642,7 +1642,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[1m])))[1d:1m]) * 60) / 3600)[7d:1d])",
+          "expr": "avg_over_time((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[5m])))[1d:5m]) * 300)[7d:1d])",
           "refId": "B",
           "legendFormat": "Deep sleep 7d"
         },
@@ -1651,7 +1651,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[1m])))[1d:1m]) * 60) / 3600)[7d:1d])",
+          "expr": "avg_over_time((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[5m])))[1d:5m]) * 300)[7d:1d])",
           "refId": "C",
           "legendFormat": "REM sleep 7d"
         },
@@ -1660,14 +1660,15 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[1m])))[1d:1m]) * 60) / 3600)[7d:1d])",
+          "expr": "avg_over_time((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[5m])))[1d:5m]) * 300)[7d:1d])",
           "refId": "D",
           "legendFormat": "Awake 7d"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "h",
+          "unit": "dtdurations",
+          "decimals": 1,
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
@@ -1718,7 +1719,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[1m])))[1d:1m]) * 60) / 3600)[30d:1d])",
+          "expr": "avg_over_time((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[5m])))[1d:5m]) * 300)[30d:1d])",
           "refId": "A",
           "legendFormat": "Total sleep 30d"
         },
@@ -1727,7 +1728,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[1m])))[1d:1m]) * 60) / 3600)[30d:1d])",
+          "expr": "avg_over_time((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Deep\"}[5m])))[1d:5m]) * 300)[30d:1d])",
           "refId": "B",
           "legendFormat": "Deep sleep 30d"
         },
@@ -1736,7 +1737,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[1m])))[1d:1m]) * 60) / 3600)[30d:1d])",
+          "expr": "avg_over_time((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"REM\"}[5m])))[1d:5m]) * 300)[30d:1d])",
           "refId": "C",
           "legendFormat": "REM sleep 30d"
         },
@@ -1745,14 +1746,15 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time(((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[1m])))[1d:1m]) * 60) / 3600)[30d:1d])",
+          "expr": "avg_over_time((sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=\"Awake\"}[5m])))[1d:5m]) * 300)[30d:1d])",
           "refId": "D",
           "legendFormat": "Awake 30d"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "h",
+          "unit": "dtdurations",
+          "decimals": 1,
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
@@ -1785,8 +1787,8 @@
     },
     {
       "id": 26,
-      "title": "Stand Hour",
-      "type": "state-timeline",
+      "title": "Daily Sleep Time",
+      "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "victoriametrics"
@@ -1796,6 +1798,204 @@
         "w": 6,
         "x": 12,
         "y": 45
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "sum_over_time((max without (source, stage) (present_over_time(apple_health_sleep_stage{source=~\"$source\",stage=~\"Asleep|Core|Deep|REM\"}[5m])))[1d:5m]) * 300",
+          "refId": "A",
+          "legendFormat": "Sleep Time",
+          "interval": "1d"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdurations",
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "fillOpacity": 35,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 27,
+      "title": "Last Bedtime",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 45
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "(min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=\"InBed\"})[1d:5m])) or min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=~\"Awake|Asleep|Core|Deep|REM\"})[1d:5m]))) * 1000",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsLocal"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 28,
+      "title": "Bedtime Trend",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 52
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "(((min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=\"InBed\"})[1d:5m])) or min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=~\"Awake|Asleep|Core|Deep|REM\"})[1d:5m])) + 10800) % 86400) * 1000) + 86400000 * ((((min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=\"InBed\"})[1d:5m])) or min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=~\"Awake|Asleep|Core|Deep|REM\"})[1d:5m])) + 10800) % 86400) * 1000) < bool 43200000)",
+          "refId": "A",
+          "legendFormat": "Bedtime",
+          "interval": "1d"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "avg_over_time(((((min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=\"InBed\"})[1d:5m])) or min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=~\"Awake|Asleep|Core|Deep|REM\"})[1d:5m])) + 10800) % 86400) * 1000) + 86400000 * ((((min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=\"InBed\"})[1d:5m])) or min without (source, stage) (min_over_time(timestamp(apple_health_sleep_stage{source=~\"$source\",stage=~\"Awake|Asleep|Core|Deep|REM\"})[1d:5m])) + 10800) % 86400) * 1000) < bool 43200000))[7d:1d])",
+          "refId": "B",
+          "legendFormat": "7d trend",
+          "interval": "1d"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "clockms",
+          "min": 64800000,
+          "max": 108000000,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 29,
+      "title": "Stand Hour",
+      "type": "state-timeline",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 59
       },
       "targets": [
         {
@@ -1829,7 +2029,7 @@
       }
     },
     {
-      "id": 27,
+      "id": 30,
       "title": "Body",
       "type": "row",
       "collapsed": false,
@@ -1837,11 +2037,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 52
+        "y": 66
       }
     },
     {
-      "id": 28,
+      "id": 31,
       "title": "Body Weight",
       "type": "timeseries",
       "datasource": {
@@ -1852,7 +2052,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 53
+        "y": 67
       },
       "targets": [
         {
@@ -1899,7 +2099,7 @@
       }
     },
     {
-      "id": 29,
+      "id": 32,
       "title": "BMI",
       "type": "gauge",
       "datasource": {
@@ -1910,7 +2110,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 53
+        "y": 67
       },
       "targets": [
         {
@@ -1967,7 +2167,7 @@
       }
     },
     {
-      "id": 30,
+      "id": 33,
       "title": "Body Fat",
       "type": "gauge",
       "datasource": {
@@ -1978,7 +2178,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 53
+        "y": 67
       },
       "targets": [
         {
@@ -2031,7 +2231,7 @@
       }
     },
     {
-      "id": 31,
+      "id": 34,
       "title": "Lean Body Mass",
       "type": "timeseries",
       "datasource": {
@@ -2042,7 +2242,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 53
+        "y": 67
       },
       "targets": [
         {
@@ -2089,7 +2289,7 @@
       }
     },
     {
-      "id": 32,
+      "id": 35,
       "title": "Height",
       "type": "stat",
       "datasource": {
@@ -2100,7 +2300,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 60
+        "y": 74
       },
       "targets": [
         {
@@ -2136,7 +2336,7 @@
       }
     },
     {
-      "id": 33,
+      "id": 36,
       "title": "Waist Circumference",
       "type": "timeseries",
       "datasource": {
@@ -2147,7 +2347,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 60
+        "y": 74
       },
       "targets": [
         {
@@ -2194,7 +2394,7 @@
       }
     },
     {
-      "id": 34,
+      "id": 37,
       "title": "Respiratory",
       "type": "row",
       "collapsed": false,
@@ -2202,11 +2402,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 67
+        "y": 81
       }
     },
     {
-      "id": 35,
+      "id": 38,
       "title": "Respiratory Rate",
       "type": "timeseries",
       "datasource": {
@@ -2217,7 +2417,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 68
+        "y": 82
       },
       "targets": [
         {
@@ -2273,7 +2473,7 @@
       }
     },
     {
-      "id": 36,
+      "id": 39,
       "title": "Forced Expiratory Volume",
       "type": "timeseries",
       "datasource": {
@@ -2284,7 +2484,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 68
+        "y": 82
       },
       "targets": [
         {
@@ -2331,7 +2531,7 @@
       }
     },
     {
-      "id": 37,
+      "id": 40,
       "title": "Forced Vital Capacity",
       "type": "timeseries",
       "datasource": {
@@ -2342,7 +2542,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 68
+        "y": 82
       },
       "targets": [
         {
@@ -2389,7 +2589,7 @@
       }
     },
     {
-      "id": 38,
+      "id": 41,
       "title": "Peak Expiratory Flow",
       "type": "timeseries",
       "datasource": {
@@ -2400,7 +2600,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 68
+        "y": 82
       },
       "targets": [
         {
@@ -2447,7 +2647,7 @@
       }
     },
     {
-      "id": 39,
+      "id": 42,
       "title": "Metabolic",
       "type": "row",
       "collapsed": false,
@@ -2455,11 +2655,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 75
+        "y": 89
       }
     },
     {
-      "id": 40,
+      "id": 43,
       "title": "Blood Glucose",
       "type": "timeseries",
       "datasource": {
@@ -2470,7 +2670,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 76
+        "y": 90
       },
       "targets": [
         {
@@ -2517,7 +2717,7 @@
       }
     },
     {
-      "id": 41,
+      "id": 44,
       "title": "Daily Insulin Delivery",
       "type": "timeseries",
       "datasource": {
@@ -2528,7 +2728,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 76
+        "y": 90
       },
       "targets": [
         {
@@ -2576,7 +2776,7 @@
       }
     },
     {
-      "id": 42,
+      "id": 45,
       "title": "Nutrition",
       "type": "row",
       "collapsed": false,
@@ -2584,11 +2784,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 83
+        "y": 97
       }
     },
     {
-      "id": 43,
+      "id": 46,
       "title": "Daily Caffeine",
       "type": "timeseries",
       "datasource": {
@@ -2599,7 +2799,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 84
+        "y": 98
       },
       "targets": [
         {
@@ -2647,7 +2847,7 @@
       }
     },
     {
-      "id": 44,
+      "id": 47,
       "title": "Daily Alcohol",
       "type": "timeseries",
       "datasource": {
@@ -2658,7 +2858,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 84
+        "y": 98
       },
       "targets": [
         {
@@ -2706,7 +2906,7 @@
       }
     },
     {
-      "id": 45,
+      "id": 48,
       "title": "Daily Dietary Energy",
       "type": "timeseries",
       "datasource": {
@@ -2717,7 +2917,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 84
+        "y": 98
       },
       "targets": [
         {
@@ -2765,7 +2965,7 @@
       }
     },
     {
-      "id": 46,
+      "id": 49,
       "title": "Daily Dietary Carbohydrates",
       "type": "timeseries",
       "datasource": {
@@ -2776,7 +2976,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 84
+        "y": 98
       },
       "targets": [
         {
@@ -2824,7 +3024,7 @@
       }
     },
     {
-      "id": 47,
+      "id": 50,
       "title": "Daily Dietary Protein",
       "type": "timeseries",
       "datasource": {
@@ -2835,7 +3035,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 91
+        "y": 105
       },
       "targets": [
         {
@@ -2883,7 +3083,7 @@
       }
     },
     {
-      "id": 48,
+      "id": 51,
       "title": "Daily Dietary Fat",
       "type": "timeseries",
       "datasource": {
@@ -2894,7 +3094,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 91
+        "y": 105
       },
       "targets": [
         {
@@ -2942,7 +3142,7 @@
       }
     },
     {
-      "id": 49,
+      "id": 52,
       "title": "Daily Water Consumption",
       "type": "timeseries",
       "datasource": {
@@ -2953,7 +3153,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 91
+        "y": 105
       },
       "targets": [
         {
@@ -3001,7 +3201,7 @@
       }
     },
     {
-      "id": 50,
+      "id": 53,
       "title": "Mobility",
       "type": "row",
       "collapsed": false,
@@ -3009,11 +3209,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 98
+        "y": 112
       }
     },
     {
-      "id": 51,
+      "id": 54,
       "title": "Walking Speed",
       "type": "timeseries",
       "datasource": {
@@ -3024,7 +3224,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 99
+        "y": 113
       },
       "targets": [
         {
@@ -3032,202 +3232,61 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "apple_health_walking_speed_m_per_sec{source=~\"$source\"}",
+          "expr": "avg_over_time(apple_health_walking_speed_m_per_sec{source=~\"$source\"}[1d])",
           "refId": "A",
-          "legendFormat": "Walking Speed"
+          "legendFormat": "Daily average",
+          "interval": "1d"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "avg_over_time(apple_health_walking_speed_m_per_sec{source=~\"$source\"}[7d])",
+          "refId": "B",
+          "legendFormat": "7d trend",
+          "interval": "1d"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "m/s",
+          "decimals": 2,
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "fillOpacity": 8,
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "mode": "none",
               "group": "A"
             }
           }
         },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      }
-    },
-    {
-      "id": 52,
-      "title": "Walking Step Length",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "victoriametrics"
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 6,
-        "y": 99
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "victoriametrics"
-          },
-          "expr": "apple_health_walking_step_length_m{source=~\"$source\"}",
-          "refId": "A",
-          "legendFormat": "Walking Step Length"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "m",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            }
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
           }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      }
-    },
-    {
-      "id": 53,
-      "title": "Walking Asymmetry",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "victoriametrics"
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 12,
-        "y": 99
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "victoriametrics"
-          },
-          "expr": "apple_health_walking_asymmetry_percent{source=~\"$source\"}",
-          "refId": "A",
-          "legendFormat": "Walking Asymmetry"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      }
-    },
-    {
-      "id": 54,
-      "title": "Walking Double Support",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "victoriametrics"
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 18,
-        "y": 99
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "victoriametrics"
-          },
-          "expr": "apple_health_walking_double_support_percent{source=~\"$source\"}",
-          "refId": "A",
-          "legendFormat": "Walking Double Support"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 1,
-            "fillOpacity": 8,
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            }
-          }
-        },
-        "overrides": []
+        ]
       },
       "options": {
         "legend": {
@@ -3246,7 +3305,7 @@
     },
     {
       "id": 55,
-      "title": "Step Length",
+      "title": "Walking Step Length",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -3255,8 +3314,8 @@
       "gridPos": {
         "h": 7,
         "w": 6,
-        "x": 0,
-        "y": 106
+        "x": 6,
+        "y": 113
       },
       "targets": [
         {
@@ -3264,28 +3323,61 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "apple_health_step_length_m{source=~\"$source\"}",
+          "expr": "avg_over_time(apple_health_walking_step_length_m{source=~\"$source\"}[1d])",
           "refId": "A",
-          "legendFormat": "Step Length"
+          "legendFormat": "Daily average",
+          "interval": "1d"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "avg_over_time(apple_health_walking_step_length_m{source=~\"$source\"}[7d])",
+          "refId": "B",
+          "legendFormat": "7d trend",
+          "interval": "1d"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "m",
+          "unit": "lengthm",
+          "decimals": 2,
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "fillOpacity": 8,
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "mode": "none",
               "group": "A"
             }
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
@@ -3304,6 +3396,279 @@
     },
     {
       "id": 56,
+      "title": "Walking Asymmetry",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 113
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "avg_over_time(apple_health_walking_asymmetry_percent{source=~\"$source\"}[1d])",
+          "refId": "A",
+          "legendFormat": "Daily average",
+          "interval": "1d"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "avg_over_time(apple_health_walking_asymmetry_percent{source=~\"$source\"}[7d])",
+          "refId": "B",
+          "legendFormat": "7d trend",
+          "interval": "1d"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 57,
+      "title": "Walking Double Support",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 113
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "avg_over_time(apple_health_walking_double_support_percent{source=~\"$source\"}[1d])",
+          "refId": "A",
+          "legendFormat": "Daily average",
+          "interval": "1d"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "avg_over_time(apple_health_walking_double_support_percent{source=~\"$source\"}[7d])",
+          "refId": "B",
+          "legendFormat": "7d trend",
+          "interval": "1d"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 58,
+      "title": "Step Length",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 120
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "avg_over_time(apple_health_step_length_m{source=~\"$source\"}[1d])",
+          "refId": "A",
+          "legendFormat": "Daily average",
+          "interval": "1d"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "avg_over_time(apple_health_step_length_m{source=~\"$source\"}[7d])",
+          "refId": "B",
+          "legendFormat": "7d trend",
+          "interval": "1d"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthm",
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 59,
       "title": "Walking Steadiness",
       "type": "gauge",
       "datasource": {
@@ -3314,7 +3679,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 106
+        "y": 120
       },
       "targets": [
         {
@@ -3367,7 +3732,7 @@
       }
     },
     {
-      "id": 57,
+      "id": 60,
       "title": "Environment",
       "type": "row",
       "collapsed": false,
@@ -3375,11 +3740,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 113
+        "y": 127
       }
     },
     {
-      "id": 58,
+      "id": 61,
       "title": "UV Index",
       "type": "timeseries",
       "datasource": {
@@ -3390,7 +3755,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 114
+        "y": 128
       },
       "targets": [
         {
@@ -3437,7 +3802,7 @@
       }
     },
     {
-      "id": 59,
+      "id": 62,
       "title": "Daily Time in Daylight",
       "type": "timeseries",
       "datasource": {
@@ -3448,7 +3813,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 114
+        "y": 128
       },
       "targets": [
         {
@@ -3557,7 +3922,7 @@
       }
     },
     {
-      "id": 60,
+      "id": 63,
       "title": "Water Temperature",
       "type": "timeseries",
       "datasource": {
@@ -3568,7 +3933,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 114
+        "y": 128
       },
       "targets": [
         {
@@ -3615,7 +3980,7 @@
       }
     },
     {
-      "id": 61,
+      "id": 64,
       "title": "Environmental Audio Exposure",
       "type": "timeseries",
       "datasource": {
@@ -3626,7 +3991,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 114
+        "y": 128
       },
       "targets": [
         {
@@ -3673,7 +4038,7 @@
       }
     },
     {
-      "id": 62,
+      "id": 65,
       "title": "Headphone Audio Exposure",
       "type": "timeseries",
       "datasource": {
@@ -3684,7 +4049,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 121
+        "y": 135
       },
       "targets": [
         {
@@ -3731,7 +4096,7 @@
       }
     },
     {
-      "id": 63,
+      "id": 66,
       "title": "Safety",
       "type": "row",
       "collapsed": false,
@@ -3739,11 +4104,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 128
+        "y": 142
       }
     },
     {
-      "id": 64,
+      "id": 67,
       "title": "Daily Falls",
       "type": "timeseries",
       "datasource": {
@@ -3754,7 +4119,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 129
+        "y": 143
       },
       "targets": [
         {
@@ -3802,7 +4167,7 @@
       }
     },
     {
-      "id": 65,
+      "id": 68,
       "title": "Workouts",
       "type": "row",
       "collapsed": false,
@@ -3810,11 +4175,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 136
+        "y": 150
       }
     },
     {
-      "id": 66,
+      "id": 69,
       "title": "Daily Workout Duration",
       "type": "timeseries",
       "datasource": {
@@ -3825,7 +4190,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 137
+        "y": 151
       },
       "targets": [
         {
@@ -3934,7 +4299,7 @@
       }
     },
     {
-      "id": 67,
+      "id": 70,
       "title": "Daily Workout Energy",
       "type": "timeseries",
       "datasource": {
@@ -3945,7 +4310,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 137
+        "y": 151
       },
       "targets": [
         {
@@ -4054,7 +4419,7 @@
       }
     },
     {
-      "id": 68,
+      "id": 71,
       "title": "Workout Heart Rate",
       "type": "timeseries",
       "datasource": {
@@ -4065,7 +4430,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 137
+        "y": 151
       },
       "targets": [
         {
@@ -4112,7 +4477,7 @@
       }
     },
     {
-      "id": 69,
+      "id": 72,
       "title": "Daily Workout Distance",
       "type": "timeseries",
       "datasource": {
@@ -4123,7 +4488,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 137
+        "y": 151
       },
       "targets": [
         {
@@ -4232,7 +4597,7 @@
       }
     },
     {
-      "id": 70,
+      "id": 73,
       "title": "Workout Average Speed",
       "type": "timeseries",
       "datasource": {
@@ -4243,7 +4608,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 144
+        "y": 158
       },
       "targets": [
         {

@@ -15,6 +15,15 @@ DASHBOARDS_DIR = ROOT / "dashboards"
 PROVISIONING_DIR = ROOT / "grafana" / "provisioning" / "dashboards"
 DS = {"type": "prometheus", "uid": "victoriametrics"}
 SLEEP_TIMESERIES_UNIT = "h"
+SLEEP_DURATION_UNIT = "dtdurations"
+SLEEP_BUCKET_INTERVAL = "5m"
+SLEEP_BUCKET_SECONDS = 300
+LOCAL_TIME_OFFSET_SECONDS = 3 * 3600
+DAY_SECONDS = 24 * 3600
+DAY_MILLISECONDS = DAY_SECONDS * 1000
+SLEEP_NIGHT_SPLIT_SECONDS = 12 * 3600
+SLEEP_NIGHT_MIN_MILLISECONDS = 18 * 3600 * 1000
+SLEEP_NIGHT_MAX_MILLISECONDS = 30 * 3600 * 1000
 
 
 @dataclass(frozen=True)
@@ -115,8 +124,21 @@ def thresholds(*steps: tuple[int | float | None, str]) -> dict[str, Any]:
     return {"mode": "absolute", "steps": [{"value": value, "color": color} for value, color in steps]}
 
 
-def field(unit: str = "short", thresholds_: dict[str, Any] | None = None, custom: dict[str, Any] | None = None) -> dict[str, Any]:
+def field(
+    unit: str = "short",
+    thresholds_: dict[str, Any] | None = None,
+    custom: dict[str, Any] | None = None,
+    decimals: int | None = None,
+    min_: int | float | None = None,
+    max_: int | float | None = None,
+) -> dict[str, Any]:
     defaults: dict[str, Any] = {"unit": unit}
+    if decimals is not None:
+        defaults["decimals"] = decimals
+    if min_ is not None:
+        defaults["min"] = min_
+    if max_ is not None:
+        defaults["max"] = max_
     if thresholds_:
         defaults["thresholds"] = thresholds_
     if custom:
@@ -165,6 +187,9 @@ def timeseries(
     description: str | None = None,
     span_nulls: bool = False,
     overrides: list[dict[str, Any]] | None = None,
+    decimals: int | None = None,
+    min_: int | float | None = None,
+    max_: int | float | None = None,
 ) -> dict[str, Any]:
     custom = {
         "drawStyle": "bars" if bars else "line",
@@ -175,7 +200,7 @@ def timeseries(
         "spanNulls": span_nulls,
         "stacking": {"mode": "normal" if stacked else "none", "group": "A"},
     }
-    field_config = field(unit, thresholds_, custom)
+    field_config = field(unit, thresholds_, custom, decimals, min_, max_)
     if overrides:
         field_config["overrides"] = overrides
     panel = {
@@ -378,6 +403,10 @@ def smoothed(metric: str, window: str, selector: str = 'source=~"$source"') -> s
     return f'avg_over_time({metric}{{{selector}}}[{window}])'
 
 
+def rolling_average(metric: str, window: str, selector: str = 'source=~"$source"') -> str:
+    return f'avg_over_time({metric}{{{selector}}}[{window}])'
+
+
 def daily(metric: str, selector: str = 'source=~"$source"', divisor: float | None = None) -> str:
     expr = f'sum(sum_over_time({metric}{{{selector}}}[1d]))'
     if divisor:
@@ -444,8 +473,8 @@ def sleep_seconds(
     return (
         "sum_over_time(("
         f"max without ({grouping}) "
-        f"(present_over_time(apple_health_sleep_stage{{{selector},{stage}}}[1m]))"
-        f")[{window}:1m]) * 60"
+        f"(present_over_time(apple_health_sleep_stage{{{selector},{stage}}}[{SLEEP_BUCKET_INTERVAL}]))"
+        f")[{window}:{SLEEP_BUCKET_INTERVAL}]) * {SLEEP_BUCKET_SECONDS}"
     )
 
 
@@ -457,12 +486,51 @@ def sleep_hours(
     return f"({sleep_seconds(selector, window, stage)}) / 3600"
 
 
+def bedtime_seconds(selector: str = 'source=~"$source"', window: str = "1d") -> str:
+    return (
+        "min without (source, stage) ("
+        f'min_over_time(timestamp(apple_health_sleep_stage{{{selector},stage="InBed"}})'
+        f"[{window}:{SLEEP_BUCKET_INTERVAL}])"
+        ")"
+        " or "
+        "min without (source, stage) ("
+        f'min_over_time(timestamp(apple_health_sleep_stage{{{selector},stage=~"Awake|Asleep|Core|Deep|REM"}})'
+        f"[{window}:{SLEEP_BUCKET_INTERVAL}])"
+        ")"
+    )
+
+
+def bedtime_ms(selector: str = 'source=~"$source"', window: str = "1d") -> str:
+    return f"({bedtime_seconds(selector, window)}) * 1000"
+
+
+def bedtime_clock_ms(selector: str = 'source=~"$source"', window: str = "1d") -> str:
+    return f"(({bedtime_seconds(selector, window)} + {LOCAL_TIME_OFFSET_SECONDS}) % {DAY_SECONDS}) * 1000"
+
+
+def bedtime_sleep_night_ms(selector: str = 'source=~"$source"', window: str = "1d") -> str:
+    bedtime = bedtime_clock_ms(selector, window)
+    return f"({bedtime}) + {DAY_MILLISECONDS} * (({bedtime}) < bool {SLEEP_NIGHT_SPLIT_SECONDS * 1000})"
+
+
+def bedtime_clock_trend_ms(trend_window: str, selector: str = 'source=~"$source"') -> str:
+    return f"avg_over_time(({bedtime_sleep_night_ms(selector)})[{trend_window}:1d])"
+
+
 def sleep_trend_hours(
     trend_window: str,
     selector: str = 'source=~"$source"',
     stage: str = 'stage=~"Asleep|Core|Deep|REM"',
 ) -> str:
     return f"avg_over_time(({sleep_hours(selector, stage=stage)})[{trend_window}:1d])"
+
+
+def sleep_trend_seconds(
+    trend_window: str,
+    selector: str = 'source=~"$source"',
+    stage: str = 'stage=~"Asleep|Core|Deep|REM"',
+) -> str:
+    return f"avg_over_time(({sleep_seconds(selector, stage=stage)})[{trend_window}:1d])"
 
 
 def training_load_daily(selector: str = 'source=~"$source",type=~"$workout_type"') -> str:
@@ -561,7 +629,7 @@ def build_overview() -> dict[str, Any]:
     panels: list[dict[str, Any]] = []
     pid = 1
     selector = 'source=~"$source"'
-    sleep_all = 'stage=~"Awake|Asleep|Core|Deep|REM|In Bed"'
+    sleep_all = 'stage=~"Awake|Asleep|Core|Deep|REM|InBed"'
 
     left_specs = [
         ("Last Sample Age", f'time() - max(timestamp(apple_health_heart_rate_bpm{{{selector}}}))', "s", thresholds((None, "green"), (3600, "yellow"), (21600, "orange"), (86400, "red"))),
@@ -569,11 +637,12 @@ def build_overview() -> dict[str, Any]:
         ("Today's Steps", daily("apple_health_steps_total", selector), "short", thresholds((None, "red"), (5000, "yellow"), (8000, "green"))),
         ("SpO2", latest("apple_health_oxygen_saturation_percent", selector), "percentunit", thresholds((None, "red"), (0.92, "orange"), (0.95, "green"))),
         ("Last Day Total Sleep", sleep_seconds(selector), "dtdurations", thresholds((None, "red"), (21600, "yellow"), (25200, "green"))),
+        ("Last Bedtime", bedtime_ms(selector), "dateTimeAsLocal", None),
         ("Active Energy", daily("apple_health_active_energy_burned_kcal", selector), "kcal", thresholds((None, "red"), (250, "yellow"), (500, "green"))),
     ]
     for i, (title, expr, unit, thr) in enumerate(left_specs):
         panel = stat(pid, title, expr, {"h": 4, "w": 3, "x": 0, "y": i * 4}, unit, thr)
-        panel["options"]["graphMode"] = "none" if i in {1, 2, 3, 4} else "area"
+        panel["options"]["graphMode"] = "none" if i in {1, 2, 3, 4, 5} else "area"
         panels.append(panel)
         pid += 1
 
@@ -599,7 +668,7 @@ def build_overview() -> dict[str, Any]:
     panels.append(sleep_recent)
     pid += 1
 
-    y = 24
+    y = len(left_specs) * 4
     panels.append(row(pid, "Sleep", y))
     pid += 1
     y += 1
@@ -716,6 +785,19 @@ def build_daily_ops() -> dict[str, Any]:
 
 def panel_for_metric(pid: int, metric: Metric, pos: dict[str, int]) -> dict[str, Any]:
     selector = 'source=~"$source"'
+    mobility_trend_metrics = {
+        "apple_health_walking_speed_m_per_sec",
+        "apple_health_walking_step_length_m",
+        "apple_health_walking_asymmetry_percent",
+        "apple_health_walking_double_support_percent",
+        "apple_health_step_length_m",
+    }
+    if metric.metric in mobility_trend_metrics:
+        unit = "lengthm" if metric.metric.endswith("_m") else metric.unit
+        return timeseries(pid, metric.title, [
+            target(rolling_average(metric.metric, "1d", selector), "A", "Daily average", interval="1d"),
+            target(rolling_average(metric.metric, "7d", selector), "B", "7d trend", interval="1d"),
+        ], pos, unit, span_nulls=True, overrides=trend_overrides(["B"]), decimals=2)
     if metric.metric == "apple_health_respiratory_rate_per_min":
         return timeseries(pid, metric.title, [
             target(smoothed(metric.metric, "1d", selector), "A", "Daily average"),
@@ -813,7 +895,7 @@ def build_gallery() -> dict[str, Any]:
             ], {"h": 7, "w": 12, "x": 0, "y": y}, "mmHg", thresholds_=thresholds((None, "green"), (120, "yellow"), (140, "red")), span_nulls=True))
             pid += 1
             domain_metrics = [m for m in domain_metrics if not m.metric.startswith("apple_health_blood_pressure_")]
-            start_x = 12
+            reserved_slots = 2
         elif domain == "Sleep":
             panels.append(timeseries(pid, "Sleep Trends", [
                 target(sleep_hours(), "A", "Total sleep"),
@@ -823,36 +905,49 @@ def build_gallery() -> dict[str, Any]:
             ], {"h": 7, "w": 12, "x": 0, "y": y}, SLEEP_TIMESERIES_UNIT, span_nulls=True))
             pid += 1
             panels.append(timeseries(pid, "Sleep Trends - 7d Average", [
-                target(sleep_trend_hours("7d"), "A", "Total sleep 7d"),
-                target(sleep_trend_hours("7d", stage='stage="Deep"'), "B", "Deep sleep 7d"),
-                target(sleep_trend_hours("7d", stage='stage="REM"'), "C", "REM sleep 7d"),
-                target(sleep_trend_hours("7d", stage='stage="Awake"'), "D", "Awake 7d"),
-            ], {"h": 7, "w": 12, "x": 12, "y": y}, SLEEP_TIMESERIES_UNIT, span_nulls=True))
+                target(sleep_trend_seconds("7d"), "A", "Total sleep 7d"),
+                target(sleep_trend_seconds("7d", stage='stage="Deep"'), "B", "Deep sleep 7d"),
+                target(sleep_trend_seconds("7d", stage='stage="REM"'), "C", "REM sleep 7d"),
+                target(sleep_trend_seconds("7d", stage='stage="Awake"'), "D", "Awake 7d"),
+            ], {"h": 7, "w": 12, "x": 12, "y": y}, SLEEP_DURATION_UNIT, span_nulls=True, decimals=1))
             pid += 1
             y += 7
             panels.append(timeseries(pid, "Sleep Trends - 30d Average", [
-                target(sleep_trend_hours("30d"), "A", "Total sleep 30d"),
-                target(sleep_trend_hours("30d", stage='stage="Deep"'), "B", "Deep sleep 30d"),
-                target(sleep_trend_hours("30d", stage='stage="REM"'), "C", "REM sleep 30d"),
-                target(sleep_trend_hours("30d", stage='stage="Awake"'), "D", "Awake 30d"),
-            ], {"h": 7, "w": 12, "x": 0, "y": y}, SLEEP_TIMESERIES_UNIT, span_nulls=True))
+                target(sleep_trend_seconds("30d"), "A", "Total sleep 30d"),
+                target(sleep_trend_seconds("30d", stage='stage="Deep"'), "B", "Deep sleep 30d"),
+                target(sleep_trend_seconds("30d", stage='stage="REM"'), "C", "REM sleep 30d"),
+                target(sleep_trend_seconds("30d", stage='stage="Awake"'), "D", "Awake 30d"),
+            ], {"h": 7, "w": 12, "x": 0, "y": y}, SLEEP_DURATION_UNIT, span_nulls=True, decimals=1))
+            pid += 1
+            panels.append(timeseries(pid, "Daily Sleep Time", [
+                target(sleep_seconds(), "A", "Sleep Time", interval="1d"),
+            ], {"h": 7, "w": 6, "x": 12, "y": y}, "dtdurations", bars=True))
+            pid += 1
+            bedtime_panel = stat(pid, "Last Bedtime", bedtime_ms(), {"h": 7, "w": 6, "x": 18, "y": y}, "dateTimeAsLocal")
+            bedtime_panel["options"]["graphMode"] = "none"
+            panels.append(bedtime_panel)
+            pid += 1
+            panels.append(timeseries(pid, "Bedtime Trend", [
+                target(bedtime_sleep_night_ms(), "A", "Bedtime", interval="1d"),
+                target(bedtime_clock_trend_ms("7d"), "B", "7d trend", interval="1d"),
+            ], {"h": 7, "w": 24, "x": 0, "y": y + 7}, "clockms", span_nulls=True, overrides=trend_overrides(["B"]), min_=SLEEP_NIGHT_MIN_MILLISECONDS, max_=SLEEP_NIGHT_MAX_MILLISECONDS))
             pid += 1
             domain_metrics = [m for m in domain_metrics if m.metric != "apple_health_sleep_stage"]
-            start_x = 12
+            reserved_slots = 8
         else:
-            start_x = 0
+            reserved_slots = 0
         extra_panels = 0
         for i, metric in enumerate(domain_metrics):
-            x_index = i + (2 if start_x else 0)
+            x_index = i + reserved_slots
             pos = grid(x_index, 6, 7, y)
             panels.append(panel_for_metric(pid, metric, pos))
             pid += 1
         if domain == "Activity":
-            x_index = len(domain_metrics) + (2 if start_x else 0)
+            x_index = len(domain_metrics) + reserved_slots
             panels.append(weekly_exercise_panel(pid, grid(x_index, 6, 7, y)))
             pid += 1
             extra_panels = 1
-        rows = max(1, (len(domain_metrics) + extra_panels + (2 if start_x else 0) + 3) // 4)
+        rows = max(1, (len(domain_metrics) + extra_panels + reserved_slots + 3) // 4)
         y += rows * 7
     dash["panels"] = panels
     return dash
