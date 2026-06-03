@@ -7,13 +7,17 @@ BUNDLED_DIR="$ROOT_DIR/bundled"
 VM_VERSION="1.108.0"
 GRAFANA_VERSION="13.0.2"
 
-ARCH_MAP_AMD64="macos-x86_64"
-ARCH_MAP_ARM64="macos-aarch64"
+goarch_to_dir() {
+    case "$1" in
+        amd64) echo "macos-x86_64" ;;
+        arm64) echo "macos-aarch64" ;;
+        *)     echo "unknown" ;;
+    esac
+}
 
 download_vm() {
     local goarch="$1"
-    local dirname_var="ARCH_MAP_${goarch}"
-    local dirname="${!dirname_var}"
+    local dirname="$(goarch_to_dir "$goarch")"
     local dir="$BUNDLED_DIR/$dirname"
     mkdir -p "$dir"
 
@@ -33,8 +37,7 @@ download_vm() {
 
 download_grafana() {
     local goarch="$1"
-    local dirname_var="ARCH_MAP_${goarch}"
-    local dirname="${!dirname_var}"
+    local dirname="$(goarch_to_dir "$goarch")"
     local dir="$BUNDLED_DIR/$dirname"
     mkdir -p "$dir"
 
