@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tonic::transport::Server;
-use tracing::info;
+use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
 use crate::checkpoint::CheckpointStore;
@@ -70,6 +70,8 @@ async fn main() {
 
     info!(port, ?addr, "starting Apple Health Export gRPC gateway");
 
+    start_mdns_advertising(port as u16);
+
     let shutdown = async {
         if let Err(e) = tokio::signal::ctrl_c().await {
             tracing::error!("failed to install signal handler: {e}");
@@ -91,4 +93,37 @@ async fn main() {
     if let Err(e) = result {
         tracing::error!("server error: {e}");
     }
+}
+
+fn start_mdns_advertising(port: u16) {
+    let hostname = gethostname::gethostname().to_string_lossy().to_string();
+    let instance = format!("{hostname} — Apple Health Export");
+
+    tokio::spawn(async move {
+        match mdns_sd::ServiceDaemon::new() {
+            Ok(daemon) => {
+                let svc = mdns_sd::ServiceInfo::new(
+                    "_apple-health-export._tcp",
+                    &instance,
+                    &instance,
+                    "",
+                    port,
+                    std::collections::HashMap::<String, String>::new(),
+                );
+                match svc {
+                    Ok(info) => {
+                        if let Err(e) = daemon.register(info) {
+                            warn!("mDNS registration failed: {e}");
+                        } else {
+                            info!("mDNS advertising on _apple-health-export._tcp:{port}");
+                        }
+                    }
+                    Err(e) => warn!("mDNS service info creation failed: {e}"),
+                }
+                tokio::signal::ctrl_c().await.ok();
+                let _ = daemon.shutdown();
+            }
+            Err(e) => warn!("mDNS daemon creation failed: {e}"),
+        }
+    });
 }

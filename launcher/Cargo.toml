@@ -1,0 +1,13 @@
+[package]
+name = "apple-health-export"
+version = "0.1.0"
+edition = "2021"
+description = "Apple Health Export — single binary that runs Victoria Metrics, Grafana, and the gRPC gateway"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

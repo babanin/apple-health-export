@@ -14,9 +14,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: gateway-rs
     steps:
       - uses: actions/checkout@v4
 
@@ -24,21 +21,19 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: gateway-rs
 
-      - name: Check formatting
+      - name: Check formatting (workspace)
         run: cargo fmt --all -- --check
 
-      - name: Run clippy
-        run: cargo clippy --all-targets -- -D warnings
+      - name: Run clippy (launcher)
+        run: cargo clippy --all-targets -p apple-health-export -- -D warnings
+
+      - name: Run clippy (gateway)
+        run: cargo clippy --all-targets -p apple-health-export-gateway -- -D warnings
 
   test:
     name: Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: gateway-rs
     steps:
       - uses: actions/checkout@v4
 
@@ -46,18 +41,13 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: gateway-rs
 
-      - name: Run tests
-        run: cargo test --lib
+      - name: Run tests (gateway)
+        run: cargo test --lib -p apple-health-export-gateway
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: gateway-rs
     steps:
       - uses: actions/checkout@v4
 
@@ -65,8 +55,9 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: gateway-rs
 
-      - name: Build release
-        run: cargo build --release
+      - name: Build launcher
+        run: cargo build --release -p apple-health-export
+
+      - name: Build gateway
+        run: cargo build --release -p apple-health-export-gateway

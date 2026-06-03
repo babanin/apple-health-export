@@ -16,6 +16,8 @@ serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 chrono = "0.4"
+mdns-sd = "0.12"
+gethostname = "1"
 
 [build-dependencies]
 tonic-build = "0.12"

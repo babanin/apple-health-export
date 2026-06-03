@@ -1,0 +1,26 @@
+#!/bin/bash
+
+AHE_DIR="/opt/apple-health-export"
+BIN_DIR="/usr/local/bin"
+
+if [ ! -d "$BIN_DIR" ]; then
+    mkdir -p "$BIN_DIR"
+fi
+
+chmod -R a+rX "$AHE_DIR"
+chmod 755 "$AHE_DIR/apple-health-export"
+
+for f in "$AHE_DIR"/bundled/*/*; do
+    if [ -f "$f" ]; then
+        chmod 755 "$f"
+    fi
+done
+
+ln -sf "$AHE_DIR/apple-health-export" "$BIN_DIR/apple-health-export"
+
+echo "Apple Health Export installed to $AHE_DIR"
+echo "Symlink created: $BIN_DIR/apple-health-export"
+echo ""
+echo "To start: apple-health-export start"
+echo "To stop:  apple-health-export stop"
+echo "iOS app will auto-discover via mDNS."

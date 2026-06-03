@@ -1,0 +1,3 @@
+[workspace]
+members = ["launcher", "gateway-rs"]
+resolver = "2"

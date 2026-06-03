@@ -67,7 +67,7 @@ class HealthExportClient: @unchecked Sendable {
     func connect() throws {
         AppLogger.shared.info("Connecting to \(serverAddress):\(serverPort)...")
         let transport = try HTTP2ClientTransport.Posix(
-            target: .ipv4(address: serverAddress, port: serverPort),
+            target: .dns(host: serverAddress, port: serverPort),
             transportSecurity: .plaintext
         )
         self.transport = transport

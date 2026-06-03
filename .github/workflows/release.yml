@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-macos-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install protoc
+        run: brew install protobuf
+
+      - name: Install Rust target
+        run: rustup target add aarch64-apple-darwin
+
+      - name: Build (workspace)
+        run: cargo build --release --target aarch64-apple-darwin
+
+      - name: Download bundled binaries
+        run: |
+          bash launcher/scripts/download-binaries.sh
+
+      - name: Create distribution directory
+        run: |
+          mkdir -p dist/apple-health-export/bundled/macos-aarch64
+          cp target/aarch64-apple-darwin/release/apple-health-export \
+            dist/apple-health-export/apple-health-export
+          chmod +x dist/apple-health-export/apple-health-export
+          cp target/aarch64-apple-darwin/release/apple-health-export-gateway \
+            dist/apple-health-export/bundled/macos-aarch64/
+          cp bundled/macos-aarch64/victoria-metrics \
+            dist/apple-health-export/bundled/macos-aarch64/
+          cp bundled/macos-aarch64/grafana-server \
+            dist/apple-health-export/bundled/macos-aarch64/
+          cp -R grafana/provisioning \
+            dist/apple-health-export/provisioning/
+
+      - name: Verify distribution
+        run: |
+          echo "=== Distribution contents ==="
+          find dist/apple-health-export -type f | sort
+          echo "=== File types ==="
+          file dist/apple-health-export/apple-health-export
+          file dist/apple-health-export/bundled/macos-aarch64/*
+
+      - name: Create archive
+        run: |
+          cd dist && tar czf apple-health-export-macos-aarch64.tar.gz apple-health-export/
+
+      - name: Build macOS installer (.pkg)
+        run: |
+          pkgbuild \
+            --root dist/apple-health-export \
+            --install-location /opt/apple-health-export \
+            --identifier com.apple-health-export.server \
+            --version "${GITHUB_REF_NAME#v}" \
+            --scripts installer/macos/scripts \
+            "dist/apple-health-export-${GITHUB_REF_NAME}-macos-aarch64.pkg"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-health-export-macos-aarch64
+          path: |
+            dist/apple-health-export-macos-aarch64.tar.gz
+            dist/apple-health-export-*.pkg
+
+  build-macos-x86_64:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install protoc
+        run: brew install protobuf
+
+      - name: Install Rust target
+        run: rustup target add x86_64-apple-darwin
+
+      - name: Build (workspace)
+        run: cargo build --release --target x86_64-apple-darwin
+
+      - name: Download bundled binaries
+        run: |
+          bash launcher/scripts/download-binaries.sh
+
+      - name: Create distribution directory
+        run: |
+          mkdir -p dist/apple-health-export/bundled/macos-x86_64
+          cp target/x86_64-apple-darwin/release/apple-health-export \
+            dist/apple-health-export/apple-health-export
+          chmod +x dist/apple-health-export/apple-health-export
+          cp target/x86_64-apple-darwin/release/apple-health-export-gateway \
+            dist/apple-health-export/bundled/macos-x86_64/
+          cp bundled/macos-x86_64/victoria-metrics \
+            dist/apple-health-export/bundled/macos-x86_64/
+          cp bundled/macos-x86_64/grafana-server \
+            dist/apple-health-export/bundled/macos-x86_64/
+          cp -R grafana/provisioning \
+            dist/apple-health-export/provisioning/
+
+      - name: Verify distribution
+        run: |
+          echo "=== Distribution contents ==="
+          find dist/apple-health-export -type f | sort
+
+      - name: Create archive
+        run: |
+          cd dist && tar czf apple-health-export-macos-x86_64.tar.gz apple-health-export/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-health-export-macos-x86_64
+          path: |
+            dist/apple-health-export-macos-x86_64.tar.gz
+
+  release:
+    needs: [build-macos-arm64, build-macos-x86_64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f | sort
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.pkg
+            scripts/install.sh
+          generate_release_notes: true

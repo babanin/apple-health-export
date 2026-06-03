@@ -15,7 +15,14 @@ venv/
 .DS_Store
 
 # Rust build output
+/target/
 gateway-rs/target/
+
+# Launcher bundled binaries (downloaded at build time)
+bundled/
+
+# Apple Health Export runtime data
+.apple-health-export/
 
 # Xcode user state
 *.xcuserstate
