@@ -37,6 +37,7 @@ services:
     restart: unless-stopped
 
   gateway:
+    image: ghcr.io/babanin/apple-health-export-gateway:latest
     build:
       context: .
       dockerfile: Dockerfile.rust
